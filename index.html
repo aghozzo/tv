@@ -6,97 +6,19 @@
   <title>TV Channels • Minimal Controls</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    html, body { height:100%; background:#000; overflow:hidden; font-family:Arial,Helvetica,sans-serif; }
-    #video-container { position:relative; width:100%; height:100%; }
-    #video { width:100%; height:100%; object-fit:contain; background:#000; }
-    
-    #custom-controls {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(0,0,0,0.7);
-      padding: 10px;
-      display: flex;
-      justify-content: center;
-      z-index: 15;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 18px;
-      background: #333;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    button:hover { background: #555; }
+    /* ... your existing styles ... */
 
-    #buttons { /* top channel buttons */
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      background: rgba(17,17,17,0.85);
-      padding: 10px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-      z-index: 20;
-      backdrop-filter: blur(4px);
-    }
-    #buttons button {
+    #refresh-btn {
+      background: #444;
       padding: 8px 16px;
       font-size: 15px;
-      background: #2a2a2a;
       color: white;
       border: none;
       border-radius: 6px;
-    }
-    #buttons button.active { background: #0066cc; }
-
-    /* Unmute overlay - fully transparent background */
-    #unmute-overlay {
-      position: absolute;
-      inset: 0;
-      background: transparent;           /* ← fully transparent */
-      z-index: 25;
-      transition: opacity 0.8s;
-      pointer-events: auto;
-    }
-    #unmute-overlay.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-    #unmute-btn {
-      position: absolute;
-      bottom: 90px;
-      right: 20px;
-      padding: 14px 28px;
-      font-size: 1.3rem;
-      background: #0066cc;
-      color: white;
-      border: none;
-      border-radius: 10px;
       cursor: pointer;
-      box-shadow: 0 3px 15px rgba(0,0,0,0.5);
     }
-    #unmute-btn:hover {
-      background: #0077ee;
-    }
-
-    #status {
-      position: absolute;
-      bottom: 70px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #ccc;
-      font-size: 14px;
-      background: rgba(0,0,0,0.6);
-      padding: 6px 14px;
-      border-radius: 6px;
-      pointer-events: none;
-      z-index: 10;
+    #refresh-btn:hover {
+      background: #666;
     }
   </style>
 </head>
@@ -115,124 +37,52 @@
   </div>
 </div>
 
-<div id="buttons"></div>
+<!-- Channel buttons + Refresh button -->
+<div id="buttons">
+  <!-- Refresh button will be added here by JS -->
+</div>
 
 <script>
+// Your existing code ...
 const video = document.getElementById('video');
-const status = document.getElementById('status');
-const unmuteOverlay = document.getElementById('unmute-overlay');
-const unmuteBtn = document.getElementById('unmute-btn');
-const playPauseBtn = document.getElementById('play-pause');
-
-let currentHls = null;
+// ... rest of variables ...
 
 const channels = [
-  { name: "RoyaTV",     url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
-  { name: "Jordan",   url: "https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
-  { name: "JorSongs", url: "https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" },
-  { name: "Mamlaka",   url: "https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
-  { name: "Amman",     url: "https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
-  { name: "Jazeera",   url: "https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
-  { name: "Arabiya",   url: "https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
-  { name: "NogFM",    url: "https://nogoumtv.nrpstream.com/hls/stream.m3u8" },
-  { name: "RoyaTV360",  url: "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8" }
+  { name: "RoyaTV", url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
+  { name: "Jordan", url: "https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
+  // ... your channels ...
 ];
 
-// Channel buttons
+// Create channel buttons + Refresh button
 const buttonsDiv = document.getElementById('buttons');
+
+// First – create Refresh button
+const refreshBtn = document.createElement('button');
+refreshBtn.id = 'refresh-btn';
+refreshBtn.textContent = 'Refresh';
+refreshBtn.onclick = () => {
+  // Force reload current channel
+  const activeBtn = document.querySelector('#buttons button.active');
+  if (activeBtn) {
+    const url = activeBtn.dataset.url;
+    playChannel(url, activeBtn);
+    status.textContent = "Refreshed!";
+    setTimeout(() => status.style.opacity = "0", 2000);
+  }
+};
+buttonsDiv.appendChild(refreshBtn);
+
+// Then create channel buttons
 channels.forEach((ch, i) => {
   const btn = document.createElement('button');
   btn.textContent = ch.name;
+  btn.dataset.url = ch.url;  // store url for refresh
   btn.onclick = () => playChannel(ch.url, btn);
   buttonsDiv.appendChild(btn);
   if (i === 0) playChannel(ch.url, btn);
 });
 
-// Unmute
-unmuteBtn.onclick = () => {
-  video.muted = false;
-  unmuteOverlay.classList.add('hidden');
-};
-
-function showUnmutePrompt() {
-  video.muted = true;
-  unmuteOverlay.classList.remove('hidden');
-}
-
-// Simple Play/Pause
-playPauseBtn.onclick = () => {
-  if (video.paused) {
-    video.play();
-    playPauseBtn.textContent = 'Pause';
-  } else {
-    video.pause();
-    playPauseBtn.textContent = 'Play';
-  }
-};
-
-function playChannel(url, clickedBtn) {
-  document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
-  if (clickedBtn) clickedBtn.classList.add('active');
-  status.textContent = "Loading...";
-  showUnmutePrompt();
-
-  if (currentHls) {
-    currentHls.destroy();
-    currentHls = null;
-  }
-
-  const config = {
-    enableWorker: true,
-    lowLatencyMode: false,
-    liveSyncDurationCount: 6,
-    liveMaxLatencyDurationCount: 12,
-    maxBufferLength: 8,
-    maxMaxBufferLength: 12,
-    maxBufferSize: 10 * 1000 * 1000,
-    backBufferLength: 5,
-    maxBufferHole: 0.5,
-    maxStarvationDelay: 2,
-    abrEwmaFastLive: 6.0,
-    abrEwmaSlowLive: 15.0,
-    abrBandWidthFactor: 0.98,
-    abrBandWidthUpFactor: 0.95,
-    abrEwmaDefaultEstimate: 300000,
-    testBandwidth: false,
-    initialLiveManifestSize: 6,
-    enableSoftwareAES: true,
-    appendErrorMaxRetry: 1,
-    fragLoadingTimeOut: 8000,
-    fragLoadingMaxRetry: 2,
-    fragLoadingRetryDelay: 500
-  };
-
-  if (Hls.isSupported()) {
-    currentHls = new Hls(config);
-    currentHls.loadSource(url);
-    currentHls.attachMedia(video);
-
-    currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(() => status.textContent = "Tap to play");
-    });
-
-    currentHls.on(Hls.Events.FRAG_BUFFERED, () => {
-      if (video.buffered.length > 0) {
-        const drift = video.buffered.end(video.buffered.length - 1) - video.currentTime;
-        video.playbackRate = (drift > 9) ? 1.10 : 1.0;
-      }
-    });
-
-    currentHls.on(Hls.Events.ERROR, (event, data) => {
-      if (data.fatal) status.textContent = "Recovering...";
-    });
-  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = url;
-    video.addEventListener('loadedmetadata', () => video.play().catch(() => {}), { once: true });
-  }
-}
-
-// Hide status after 10s
-setTimeout(() => { status.style.opacity = "0"; status.style.transition = "opacity 1s"; }, 10000);
+// ... rest of your script (unmute, playPause, playChannel, etc.) ...
 </script>
 </body>
 </html>
