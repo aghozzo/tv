@@ -37,18 +37,18 @@ function play(url, clickedBtn) {
       video.play().catch(e => console.log('Play error:', e));
     });
 
-  currentHls.on(Hls.Events.FRAG_BUFFERED, function() {
-    if (video.buffered.length > 0) {
-      const bufferEnd = video.buffered.end(video.buffered.length - 1);
-      const current = video.currentTime;
-      const drift = bufferEnd - current;
-      if (drift > 12) {          // Too much drift → very gentle catch-up
-        video.playbackRate = 1.04; // Almost invisible speedup
-      } else if (drift < 4) {
-        video.playbackRate = 1.0;
+    currentHls.on(Hls.Events.FRAG_BUFFERED, function() {
+      if (video.buffered.length > 0) {
+        const bufferEnd = video.buffered.end(video.buffered.length - 1);
+        const current = video.currentTime;
+        const drift = bufferEnd - current;
+        if (drift > 12) {          // Too much drift → very gentle catch-up
+          video.playbackRate = 1.04; // Almost invisible speedup
+        } else if (drift < 4) {
+          video.playbackRate = 1.0;
+        }
       }
-    }
-  });
+    });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     // native Safari fallback – usually smoother on Apple hardware
     video.src = url;
