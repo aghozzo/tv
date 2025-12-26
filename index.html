@@ -14,10 +14,14 @@
     #custom-controls {
       position: absolute;
       bottom: 20px;
-      left: 20px;
+      left: 50%;
+      transform: translateX(-50%);
       background: rgba(0,0,0,0.65);
       padding: 10px 20px;
       border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
       z-index: 15;
     }
     button {
@@ -31,6 +35,25 @@
     }
     button:hover { background: #555; }
 
+    /* Volume slider */
+    input[type="range"] {
+      width: 120px;
+      -webkit-appearance: none;
+      height: 8px;
+      background: #444;
+      border-radius: 5px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #0066cc;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
     #buttons {
       position: fixed;
       top: 0; left: 0; right: 0;
@@ -39,7 +62,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      align-items: center;
+      justify-content: center;       /* centered again */
       z-index: 20;
       backdrop-filter: blur(4px);
     }
@@ -52,17 +75,6 @@
       border-radius: 6px;
     }
     #buttons button.active { background: #0066cc; }
-
-    /* Dashboard refresh button - far right, different color */
-    #dashboard-refresh {
-      background: #8B0000;          /* dark red */
-      color: white;
-      font-weight: bold;
-      margin-left: auto;            /* pushes it to the far right */
-    }
-    #dashboard-refresh:hover {
-      background: #A52A2A;          /* lighter red on hover */
-    }
 
     #unmute-overlay {
       position: absolute;
@@ -119,6 +131,7 @@
 
   <div id="custom-controls">
     <button id="play-pause">Play</button>
+    <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
   </div>
 
   <div id="status">Loading channel...</div>
@@ -132,6 +145,7 @@ const status = document.getElementById('status');
 const unmuteOverlay = document.getElementById('unmute-overlay');
 const unmuteBtn = document.getElementById('unmute-btn');
 const playPauseBtn = document.getElementById('play-pause');
+const volumeSlider = document.getElementById('volume');
 
 let currentHls = null;
 let currentUrl = null;
@@ -148,20 +162,8 @@ const channels = [
   { name: "RoyaTV360", url: "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8" }
 ];
 
-// Create buttons
+// Create channel buttons (centered)
 const buttonsDiv = document.getElementById('buttons');
-
-// Dashboard refresh button (far right, only this one)
-const dashboardBtn = document.createElement('button');
-dashboardBtn.id = 'dashboard-refresh';
-dashboardBtn.textContent = 'Dashboard';
-dashboardBtn.onclick = () => {
-  status.textContent = "Reloading...";
-  window.location.reload(true);  // full reload from server
-};
-buttonsDiv.appendChild(dashboardBtn);
-
-// Channel buttons (appear before the refresh button in flow, but refresh is pushed to end)
 channels.forEach((ch, i) => {
   const btn = document.createElement('button');
   btn.textContent = ch.name;
@@ -199,8 +201,14 @@ playPauseBtn.onclick = () => {
   }
 };
 
+// Volume control
+volumeSlider.oninput = () => {
+  video.volume = volumeSlider.value;
+};
+volumeSlider.value = 0.5;  // initial volume
+
 function playChannel(url, clickedBtn) {
-  document.querySelectorAll('#buttons button:not(#dashboard-refresh)').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
   if (clickedBtn) clickedBtn.classList.add('active');
 
   status.textContent = "Loading...";
@@ -263,11 +271,11 @@ function playChannel(url, clickedBtn) {
   }
 }
 
-// Pause/resume on screen off/on
+// === Stop stream when screen is turned off / frame sleeps ===
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     video.pause();
-    if (currentHls) currentHls.stopLoad();
+    if (currentHls) currentHls.stopLoad();   // stops downloading segments
     status.textContent = "Paused (screen off)";
   } else {
     video.play().catch(() => {});
@@ -277,7 +285,18 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Hide initial status
+// Extra safety for some kiosk browsers / tablets
+window.addEventListener('blur', () => {
+  video.pause();
+  if (currentHls) currentHls.stopLoad();
+});
+
+window.addEventListener('focus', () => {
+  video.play().catch(() => {});
+  if (currentHls) currentHls.startLoad();
+});
+
+// Hide initial status after 10 seconds
 setTimeout(() => { 
   status.style.opacity = "0"; 
   status.style.transition = "opacity 1s"; 
