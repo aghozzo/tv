@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TV Channels • Minimal Controls</title>
+  <title>TV Channels • Digital Frame</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -60,12 +60,14 @@
 
     #unmute-overlay {
       position: absolute;
-      top: 60px;                    /* below top bar */
-      left: 0; right: 0; bottom: 0;
+      top: 60px;                    /* start below top buttons bar */
+      left: 0;
+      right: 0;
+      bottom: 0;
       background: transparent;
       z-index: 25;
       transition: opacity 0.8s;
-      pointer-events: none;         /* clicks pass through */
+      pointer-events: none;         /* clicks pass through overlay */
     }
     #unmute-overlay.hidden {
       opacity: 0;
@@ -128,7 +130,7 @@ const unmuteBtn = document.getElementById('unmute-btn');
 const playPauseBtn = document.getElementById('play-pause');
 
 let currentHls = null;
-let currentUrl = null;  // to remember last played url for refresh
+let currentUrl = null;
 
 const channels = [
   { name: "RoyaTV",    url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
@@ -142,10 +144,26 @@ const channels = [
   { name: "RoyaTV360", url: "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8" }
 ];
 
-// Create buttons container
+// Create buttons
 const buttonsDiv = document.getElementById('buttons');
 
-// 1. Then channel buttons
+// Refresh button
+const refreshBtn = document.createElement('button');
+refreshBtn.id = 'refresh-btn';
+refreshBtn.textContent = 'Refresh';
+refreshBtn.onclick = () => {
+  if (currentUrl) {
+    status.textContent = "Refreshing...";
+    playChannel(currentUrl, null);
+    setTimeout(() => {
+      status.textContent = "Refreshed";
+      setTimeout(() => { status.style.opacity = "0"; }, 2000);
+    }, 800);
+  }
+};
+buttonsDiv.appendChild(refreshBtn);
+
+// Channel buttons
 channels.forEach((ch, i) => {
   const btn = document.createElement('button');
   btn.textContent = ch.name;
@@ -160,25 +178,6 @@ channels.forEach((ch, i) => {
     currentUrl = ch.url;
   }
 });
-  
-// 2. Refresh button first
-const refreshBtn = document.createElement('button');
-refreshBtn.id = 'refresh-btn';
-refreshBtn.textContent = 'Refresh';
-refreshBtn.onclick = () => {
-  if (currentUrl) {
-    status.textContent = "Refreshing...";
-    playChannel(currentUrl, null);  // null = don't highlight any button
-    setTimeout(() => {
-      if (status.textContent === "Refreshing...") {
-        status.textContent = "Refreshed";
-        setTimeout(() => status.style.opacity = "0", 2000);
-      }
-    }, 1000);
-  }
-};
-buttonsDiv.appendChild(refreshBtn);
-
 
 // Unmute
 unmuteBtn.onclick = () => {
@@ -194,7 +193,7 @@ function showUnmutePrompt() {
 // Play/Pause
 playPauseBtn.onclick = () => {
   if (video.paused) {
-    video.play();
+    video.play().catch(() => {});
     playPauseBtn.textContent = 'Pause';
   } else {
     video.pause();
@@ -202,15 +201,14 @@ playPauseBtn.onclick = () => {
   }
 };
 
+// Core play function
 function playChannel(url, clickedBtn) {
-  // Update UI
   document.querySelectorAll('#buttons button:not(#refresh-btn)').forEach(b => b.classList.remove('active'));
   if (clickedBtn) clickedBtn.classList.add('active');
 
   status.textContent = "Loading...";
   showUnmutePrompt();
 
-  // Cleanup
   if (currentHls) {
     currentHls.destroy();
     currentHls = null;
@@ -268,7 +266,33 @@ function playChannel(url, clickedBtn) {
   }
 }
 
-// Hide status after 10 seconds
+// === Pause stream when screen is off / tab hidden ===
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // Screen off → stop playback & downloading
+    video.pause();
+    if (currentHls) {
+      currentHls.stopLoad();
+    }
+    status.textContent = "Paused (screen off)";
+  } else {
+    // Screen on → resume
+    video.play().catch(() => {});
+    if (currentHls) {
+      currentHls.startLoad();
+    }
+    status.textContent = "Resuming...";
+    setTimeout(() => { status.style.opacity = "0"; }, 3000);
+  }
+});
+
+// Optional: extra pause on blur (some kiosk browsers)
+window.addEventListener('blur', () => {
+  video.pause();
+  if (currentHls) currentHls.stopLoad();
+});
+
+// Hide status after 10 seconds (initial load)
 setTimeout(() => { 
   status.style.opacity = "0"; 
   status.style.transition = "opacity 1s"; 
