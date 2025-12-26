@@ -76,7 +76,7 @@
     #unmute-btn {
       position: absolute;
       bottom: 90px;                         /* above custom controls */
-      right: 20px;
+      right: 50px;
       padding: 14px 28px;
       font-size: 1.3rem;
       background: #0066cc;
@@ -138,15 +138,15 @@ const progressFilled = document.getElementById('progress-filled');
 let currentHls = null;
 
 const channels = [
-  { name: "Roya TV",     url: "https://royatv-live.daioncdn.net/royatv/royatv.m3u8" },
-  { name: "Jordan 720",   url: "https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
-  { name: "Jordan Songs", url: "https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" },
-  { name: "Al Mamlaka",   url: "https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
-  { name: "Amman TV",     url: "https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
-  { name: "Al Jazeera",   url: "https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
-  { name: "Al Arabiya",   url: "https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
-  { name: "Nogoum FM",    url: "https://nogoumtv.nrpstream.com/hls/stream.m3u8" },
-  { name: "Roya TV 720",  url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" }
+  { name: "Roya",     url: "https://royatv-live.daioncdn.net/royatv/royatv.m3u8" },
+  { name: "Jordan",   url: "https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
+  { name: "JorSongs", url: "https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" },
+  { name: "Mamlaka",   url: "https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
+  { name: "Amman",     url: "https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
+  { name: "Jazeera",   url: "https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
+  { name: "Arabiya",   url: "https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
+  { name: "NogFM",    url: "https://nogoumtv.nrpstream.com/hls/stream.m3u8" },
+  { name: "Roya720",  url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" }
 ];
 
 // Channel buttons
