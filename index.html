@@ -11,35 +11,48 @@
     #video-container { position:relative; width:100%; height:100%; }
     #video { width:100%; height:100%; object-fit:contain; background:#000; }
     
-    #custom-controls {
+    /* Play/Pause - bottom left */
+    #play-pause {
       position: absolute;
       bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.65);
-      padding: 10px 20px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      z-index: 15;
-    }
-    button {
-      padding: 10px 20px;
+      left: 20px;
+      padding: 12px 24px;
       font-size: 18px;
-      background: #333;
+      background: rgba(0,0,0,0.7);
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
+      z-index: 15;
     }
-    button:hover { background: #555; }
+    #play-pause:hover { background: rgba(50,50,50,0.9); }
 
-    /* Volume slider */
+    /* Volume - vertical on right side */
+    #volume-container {
+      position: absolute;
+      right: 20px;
+      bottom: 50%;
+      transform: translateY(50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      z-index: 15;
+      background: rgba(0,0,0,0.6);
+      padding: 20px 10px;
+      border-radius: 12px;
+    }
+    #volume-label {
+      color: white;
+      font-size: 14px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+    }
     input[type="range"] {
-      width: 120px;
-      -webkit-appearance: none;
-      height: 8px;
+      writing-mode: bt-lr; /* vertical */
+      -webkit-appearance: slider-vertical;
+      width: 8px;
+      height: 200px;
       background: #444;
       border-radius: 5px;
       outline: none;
@@ -62,7 +75,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      justify-content: center;       /* centered again */
+      justify-content: center;
       z-index: 20;
       backdrop-filter: blur(4px);
     }
@@ -129,9 +142,13 @@
     <button id="unmute-btn">🔊 Start Sound</button>
   </div>
 
-  <div id="custom-controls">
-    <button id="play-pause">Play</button>
-    <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
+  <!-- Play/Pause button - bottom left -->
+  <button id="play-pause">Play</button>
+
+  <!-- Volume vertical - right side -->
+  <div id="volume-container">
+    <span id="volume-label">Vol</span>
+    <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5" orient="vertical">
   </div>
 
   <div id="status">Loading channel...</div>
@@ -271,11 +288,11 @@ function playChannel(url, clickedBtn) {
   }
 }
 
-// === Stop stream when screen is turned off / frame sleeps ===
+// Stop stream when screen off / frame sleeps
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     video.pause();
-    if (currentHls) currentHls.stopLoad();   // stops downloading segments
+    if (currentHls) currentHls.stopLoad();
     status.textContent = "Paused (screen off)";
   } else {
     video.play().catch(() => {});
@@ -285,7 +302,6 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Extra safety for some kiosk browsers / tablets
 window.addEventListener('blur', () => {
   video.pause();
   if (currentHls) currentHls.stopLoad();
@@ -296,7 +312,7 @@ window.addEventListener('focus', () => {
   if (currentHls) currentHls.startLoad();
 });
 
-// Hide initial status after 10 seconds
+// Hide initial status
 setTimeout(() => { 
   status.style.opacity = "0"; 
   status.style.transition = "opacity 1s"; 
