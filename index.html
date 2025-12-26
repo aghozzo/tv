@@ -145,7 +145,23 @@ const channels = [
 // Create buttons container
 const buttonsDiv = document.getElementById('buttons');
 
-// 1. Refresh button first
+// 1. Then channel buttons
+channels.forEach((ch, i) => {
+  const btn = document.createElement('button');
+  btn.textContent = ch.name;
+  btn.dataset.url = ch.url;
+  btn.onclick = () => {
+    playChannel(ch.url, btn);
+    currentUrl = ch.url;
+  };
+  buttonsDiv.appendChild(btn);
+  if (i === 0) {
+    playChannel(ch.url, btn);
+    currentUrl = ch.url;
+  }
+});
+  
+// 2. Refresh button first
 const refreshBtn = document.createElement('button');
 refreshBtn.id = 'refresh-btn';
 refreshBtn.textContent = 'Refresh';
@@ -163,21 +179,6 @@ refreshBtn.onclick = () => {
 };
 buttonsDiv.appendChild(refreshBtn);
 
-// 2. Then channel buttons
-channels.forEach((ch, i) => {
-  const btn = document.createElement('button');
-  btn.textContent = ch.name;
-  btn.dataset.url = ch.url;
-  btn.onclick = () => {
-    playChannel(ch.url, btn);
-    currentUrl = ch.url;
-  };
-  buttonsDiv.appendChild(btn);
-  if (i === 0) {
-    playChannel(ch.url, btn);
-    currentUrl = ch.url;
-  }
-});
 
 // Unmute
 unmuteBtn.onclick = () => {
