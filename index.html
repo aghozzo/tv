@@ -11,21 +11,23 @@ function play(url, clickedBtn) {
   }
 
   if (Hls.isSupported()) {
-    const config = {
-      enableWorker: true,                  // offload to web worker if possible (good for Pi)
-      lowLatencyMode: true,                // crucial for live TV – enables PART handling
-      liveSyncDurationCount: 2,            // start ~2 segments behind live edge (default 3)
-      liveMaxLatencyDurationCount: 5,      // if >5 segments behind → force catch-up
-      maxBufferLength: 12,                 // target buffer ~12s (default 30s) – less waiting
-      maxMaxBufferLength: 20,              // hard cap – prevents memory hogging on long play
-      maxBufferSize: 0,                    // 0 = unlimited (or try 30*1000*1000 = 30MB)
-      abrEwmaFastLive: 4.0,                // faster bandwidth reaction
-      abrEwmaSlowLive: 10.0,
-      abrBandWidthFactor: 0.90,            // more conservative down-switch → less starvation
-      abrBandWidthUpFactor: 0.8,           // quicker up-switch when bandwidth good
-      initialLiveManifestSize: 3,          // preload a bit more manifest entries at start
-      backBufferLength: 30                 // keep some history (helps on seek/stall)
-    };
+  const config = {
+    enableWorker: true,                    // Offload to worker (helps a lot on Pi)
+    lowLatencyMode: true,                  // Still useful, but paired with small buffers
+    liveSyncDurationCount: 3,              // Slightly more segments → better stability (was 2)
+    liveMaxLatencyDurationCount: 8,        // Allow catching up without too aggressive seeking
+    maxBufferLength: 10,                   // Target ~10s buffer (less memory/CPU strain)
+    maxMaxBufferLength: 15,                // Hard cap to avoid RAM explosion
+    maxBufferSize: 15 * 1000 * 1000,       // ~15MB cap – very important on Pi (default unlimited)
+    backBufferLength: 20,                  // Trim old data faster
+    abrEwmaFastLive: 5.0,                  // Slower bandwidth reaction → fewer quality flips (less CPU spikes)
+    abrEwmaSlowLive: 12.0,
+    abrBandWidthFactor: 0.75,              // More conservative down-switching
+    abrBandWidthUpFactor: 0.6,
+    enableSoftwareAES: true,               // Fallback if hardware crypto is slow
+    testBandwidth: false,                  // Skip initial test fragment (saves resources on start)
+    initialLiveManifestSize: 4             // Preload a few more entries for quicker recovery
+  };
 
     currentHls = new Hls(config);
     currentHls.loadSource(url);
@@ -35,18 +37,18 @@ function play(url, clickedBtn) {
       video.play().catch(e => console.log('Play error:', e));
     });
 
-    // Optional: gentle catch-up if drifting (some users like it)
-    currentHls.on(Hls.Events.FRAG_BUFFERED, () => {
-      if (video.buffered.length > 0) {
-        const bufferEnd = video.buffered.end(video.buffered.length - 1);
-        const current = video.currentTime;
-        if (bufferEnd - current > 8) {  // too much buffer → gently speed up
-          video.playbackRate = 1.08;    // 8% faster – almost unnoticeable
-        } else {
-          video.playbackRate = 1.0;
-        }
+  currentHls.on(Hls.Events.FRAG_BUFFERED, function() {
+    if (video.buffered.length > 0) {
+      const bufferEnd = video.buffered.end(video.buffered.length - 1);
+      const current = video.currentTime;
+      const drift = bufferEnd - current;
+      if (drift > 12) {          // Too much drift → very gentle catch-up
+        video.playbackRate = 1.04; // Almost invisible speedup
+      } else if (drift < 4) {
+        video.playbackRate = 1.0;
       }
-    });
+    }
+  });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     // native Safari fallback – usually smoother on Apple hardware
     video.src = url;
