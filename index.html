@@ -3,80 +3,152 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TV Channels • Minimal Lag Mode</title>
+  <title>TV Channels • Stable Mode</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
   <style>
-    html, body {
+    * {
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
       height: 100%;
       background: #000;
       overflow: hidden;
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    #video-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
     }
     #video {
       width: 100%;
-      height: calc(100% - 60px);
+      height: 100%;
       object-fit: contain;
       background: #000;
     }
+
+    /* Force native controls to stay visible (Chromium best effort) */
+    video::-webkit-media-controls {
+      opacity: 1 !important;
+      display: flex !important;
+      pointer-events: auto !important;
+    }
+    video::-webkit-media-controls-panel {
+      opacity: 1 !important;
+      visibility: visible !important;
+      display: flex !important;
+      background: rgba(0,0,0,0.65) !important;
+      transform: none !important;
+      transition: none !important;
+    }
+    video:hover::-webkit-media-controls,
+    video:focus::-webkit-media-controls {
+      opacity: 1 !important;
+    }
+
     #buttons {
-      background: #111;
-      padding: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
-      z-index: 10;
+      background: rgba(17,17,17,0.85);
+      padding: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      z-index: 15;
+      backdrop-filter: blur(4px);
     }
     button {
-      padding: 8px 14px;
+      padding: 8px 16px;
       font-size: 15px;
-      background: #333;
+      background: #2a2a2a;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.18s;
     }
     button:hover {
-      background: #555;
+      background: #444;
     }
     button.active {
       background: #0066cc;
+      box-shadow: 0 0 0 2px rgba(0,102,204,0.4);
     }
+
+    #unmute-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.65);
+      z-index: 20;
+      transition: opacity 0.8s;
+    }
+    #unmute-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #unmute-btn {
+      padding: 16px 32px;
+      font-size: 1.6rem;
+      background: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    #unmute-btn:hover {
+      background: #0077ee;
+    }
+
     #status {
       position: absolute;
-      bottom: 70px; /* above buttons area */
+      bottom: 80px;
       left: 50%;
       transform: translateX(-50%);
-      color: #aaa;
-      font-size: 12px;
+      color: #ccc;
+      font-size: 13px;
       background: rgba(0,0,0,0.6);
-      padding: 4px 12px;
-      border-radius: 4px;
+      padding: 6px 14px;
+      border-radius: 6px;
       pointer-events: none;
+      z-index: 10;
     }
   </style>
 </head>
 <body>
 
-<div id="status">Loading channel...</div>
-<video id="video" autoplay muted playsinline></video> <!-- removed controls for cleaner kiosk feel -->
+<div id="video-container">
+  <video id="video" autoplay muted playsinline></video>
+
+  <!-- Unmute overlay (shows on load & channel change) -->
+  <div id="unmute-overlay">
+    <button id="unmute-btn">🔊 Start Sound</button>
+  </div>
+
+  <!-- Status indicator -->
+  <div id="status">Loading channel...</div>
+</div>
+
+<!-- Channel buttons on top -->
 <div id="buttons"></div>
 
 <script>
-// === Channels (use lowest bitrate/720p variants when possible) ===
 const video = document.getElementById('video');
 const status = document.getElementById('status');
+const unmuteOverlay = document.getElementById('unmute-overlay');
+const unmuteBtn = document.getElementById('unmute-btn');
 let currentHls = null;
 
 const channels = [
-  { name: "Roya TV",     url: "https://royatv-live.daioncdn.net/royatv/royatv.m3u8" },
+  { name: "Roya TV 360",     url: "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8" },
   { name: "Jordan 720",   url: "https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
   { name: "Jordan Songs", url: "https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" },
   { name: "Al Mamlaka",   url: "https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
@@ -87,7 +159,7 @@ const channels = [
   { name: "Roya TV 720",  url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" }
 ];
 
-// === Create Buttons (now at top) ===
+// Create channel buttons
 const buttonsDiv = document.getElementById('buttons');
 channels.forEach((ch, i) => {
   const btn = document.createElement('button');
@@ -95,40 +167,54 @@ channels.forEach((ch, i) => {
   btn.dataset.url = ch.url;
   btn.onclick = () => playChannel(ch.url, btn);
   buttonsDiv.appendChild(btn);
-  if (i === 0) playChannel(ch.url, btn); // Auto-start first
+  if (i === 0) playChannel(ch.url, btn);
 });
 
-// === Ultra-Stable Config – Prioritizes NO STALLS over low latency ===
+// Unmute button handler
+unmuteBtn.onclick = () => {
+  video.muted = false;
+  unmuteOverlay.classList.add('hidden');
+};
+
+// Show unmute overlay when changing channels or on first load
+function showUnmutePrompt() {
+  video.muted = true; // reset to muted (safer)
+  unmuteOverlay.classList.remove('hidden');
+}
+
 function playChannel(url, clickedBtn) {
+  // UI feedback
   document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
   if (clickedBtn) clickedBtn.classList.add('active');
   status.textContent = "Loading...";
+  showUnmutePrompt(); // show unmute button after channel change
 
+  // Cleanup previous
   if (currentHls) {
     currentHls.destroy();
     currentHls = null;
   }
 
   const config = {
-    enableWorker: true,                    // Keep if Pi supports workers, helps demuxing
-    lowLatencyMode: false,                 // ← false! Better stability on weak hw (parts often cause issues)
-    liveSyncDurationCount: 6,              // Start further back → more initial buffer → fewer stalls
-    liveMaxLatencyDurationCount: 12,       // Allow bigger drift before aggressive catch-up
-    maxBufferLength: 8,                    // Very small target buffer (memory + CPU friendly)
-    maxMaxBufferLength: 12,                // Hard cap
-    maxBufferSize: 10 * 1000 * 1000,       // ~10 MB – very tight for low-power devices
-    backBufferLength: 5,                   // Trim history fast
+    enableWorker: true,
+    lowLatencyMode: false,
+    liveSyncDurationCount: 6,
+    liveMaxLatencyDurationCount: 12,
+    maxBufferLength: 8,
+    maxMaxBufferLength: 12,
+    maxBufferSize: 10 * 1000 * 1000,
+    backBufferLength: 5,
     maxBufferHole: 0.5,
-    maxStarvationDelay: 2,                 // Force quality drop sooner
-    abrEwmaFastLive: 6.0,                  // Slower reaction → less flipping
+    maxStarvationDelay: 2,
+    abrEwmaFastLive: 6.0,
     abrEwmaSlowLive: 15.0,
-    abrBandWidthFactor: 0.98,              // Very conservative – stay on low quality
-    abrBandWidthUpFactor: 0.95,            // Almost never upswitch
-    abrEwmaDefaultEstimate: 300000,        // Start assuming very low bandwidth (~300 kbps)
-    testBandwidth: false,                  // Skip initial test fragment
-    initialLiveManifestSize: 6,            // Preload more manifest entries
+    abrBandWidthFactor: 0.98,
+    abrBandWidthUpFactor: 0.95,
+    abrEwmaDefaultEstimate: 300000,
+    testBandwidth: false,
+    initialLiveManifestSize: 6,
     enableSoftwareAES: true,
-    appendErrorMaxRetry: 1,                // Fail fast on append errors
+    appendErrorMaxRetry: 1,
     fragLoadingTimeOut: 8000,
     fragLoadingMaxRetry: 2,
     fragLoadingRetryDelay: 500
@@ -140,10 +226,12 @@ function playChannel(url, clickedBtn) {
     currentHls.attachMedia(video);
 
     currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(() => status.textContent = "Tap screen if needed");
+      video.play().catch(() => {
+        status.textContent = "Tap screen if playback doesn't start";
+      });
     });
 
-    // Gentle catch-up (1.08–1.12x almost invisible on TV content)
+    // Very gentle catch-up
     currentHls.on(Hls.Events.FRAG_BUFFERED, () => {
       if (video.buffered.length > 0) {
         const drift = video.buffered.end(video.buffered.length - 1) - video.currentTime;
@@ -160,12 +248,18 @@ function playChannel(url, clickedBtn) {
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
-    video.addEventListener('loadedmetadata', () => video.play().catch(() => {}), { once: true });
+    video.addEventListener('loadedmetadata', () => {
+      video.play().catch(() => {});
+      status.textContent = "Playing";
+    }, { once: true });
   }
 }
 
-// Hide status after ~10s
-setTimeout(() => { status.style.opacity = "0"; status.style.transition = "opacity 1s"; }, 10000);
+// Hide status after 10 seconds
+setTimeout(() => {
+  status.style.opacity = "0";
+  status.style.transition = "opacity 1s";
+}, 10000);
 </script>
 </body>
 </html>
