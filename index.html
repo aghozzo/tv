@@ -3,118 +3,90 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TV Channels • Stable Mode</title>
+  <title>TV Channels • Stable Custom Controls</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    html, body {
-      height: 100%;
-      background: #000;
-      overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-    #video-container {
-      position: relative;
-      width: 100%;
-      height: 100%;
-    }
-    #video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      background: #000;
-    }
-
-    /* Force native controls to stay visible (Chromium best effort) */
-    video::-webkit-media-controls {
-      opacity: 1 !important;
-      display: flex !important;
-      pointer-events: auto !important;
-    }
-    video::-webkit-media-controls-panel {
-      opacity: 1 !important;
-      visibility: visible !important;
-      display: flex !important;
-      background: rgba(0,0,0,0.65) !important;
-      transform: none !important;
-      transition: none !important;
-    }
-    video:hover::-webkit-media-controls,
-    video:focus::-webkit-media-controls {
-      opacity: 1 !important;
-    }
-
-    #buttons {
-      position: fixed;
-      top: 0;
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; background:#000; overflow:hidden; font-family:Arial,Helvetica,sans-serif; }
+    #video-container { position:relative; width:100%; height:100%; }
+    #video { width:100%; height:100%; object-fit:contain; background:#000; }
+    
+    #custom-controls {
+      position: absolute;
+      bottom: 0;
       left: 0;
       right: 0;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 15;
+      flex-wrap: wrap;
+    }
+    button, input[type="range"] {
+      padding: 8px;
+      font-size: 16px;
+      background: #333;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #555; }
+    input[type="range"] { flex: 1; min-width: 120px; }
+    #progress { flex: 1; height: 6px; background: #555; border-radius: 3px; cursor: pointer; }
+    #progress-filled { height: 100%; background: #0066cc; width: 0%; border-radius: 3px; }
+
+    #buttons { /* top channel buttons - same as before */
+      position: fixed;
+      top: 0; left: 0; right: 0;
       background: rgba(17,17,17,0.85);
       padding: 10px;
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       justify-content: center;
-      z-index: 15;
+      z-index: 20;
       backdrop-filter: blur(4px);
     }
-    button {
+    #buttons button {
       padding: 8px 16px;
       font-size: 15px;
       background: #2a2a2a;
       color: white;
       border: none;
       border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.18s;
     }
-    button:hover {
-      background: #444;
-    }
-    button.active {
-      background: #0066cc;
-      box-shadow: 0 0 0 2px rgba(0,102,204,0.4);
-    }
+    #buttons button.active { background: #0066cc; }
 
-    #unmute-overlay {
+    #unmute-overlay { /* same unmute overlay */
       position: absolute;
       inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
       background: rgba(0,0,0,0.65);
-      z-index: 20;
-      transition: opacity 0.8s;
+      z-index: 25;
     }
-    #unmute-overlay.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
+    #unmute-overlay.hidden { opacity: 0; pointer-events: none; }
     #unmute-btn {
-      padding: 16px 32px;
-      font-size: 1.6rem;
+      padding: 20px 40px;
+      font-size: 1.8rem;
       background: #0066cc;
       color: white;
       border: none;
       border-radius: 12px;
       cursor: pointer;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    }
-    #unmute-btn:hover {
-      background: #0077ee;
     }
 
     #status {
       position: absolute;
-      bottom: 80px;
+      bottom: 70px;
       left: 50%;
       transform: translateX(-50%);
       color: #ccc;
-      font-size: 13px;
+      font-size: 14px;
       background: rgba(0,0,0,0.6);
       padding: 6px 14px;
       border-radius: 6px;
@@ -128,16 +100,18 @@
 <div id="video-container">
   <video id="video" autoplay muted playsinline></video>
 
-  <!-- Unmute overlay (shows on load & channel change) -->
   <div id="unmute-overlay">
     <button id="unmute-btn">🔊 Start Sound</button>
   </div>
 
-  <!-- Status indicator -->
-  <div id="status">Loading channel...</div>
+  <div id="custom-controls">
+    <button id="play-pause">Play</button>
+    <div id="progress"><div id="progress-filled"></div></div>
+    <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
+    <div id="status">Loading channel...</div>
+  </div>
 </div>
 
-<!-- Channel buttons on top -->
 <div id="buttons"></div>
 
 <script>
@@ -145,10 +119,15 @@ const video = document.getElementById('video');
 const status = document.getElementById('status');
 const unmuteOverlay = document.getElementById('unmute-overlay');
 const unmuteBtn = document.getElementById('unmute-btn');
+const playPauseBtn = document.getElementById('play-pause');
+const volumeSlider = document.getElementById('volume');
+const progress = document.getElementById('progress');
+const progressFilled = document.getElementById('progress-filled');
+
 let currentHls = null;
 
 const channels = [
-  { name: "Roya TV 360",     url: "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8" },
+  { name: "Roya TV",     url: "https://royatv-live.daioncdn.net/royatv/royatv.m3u8" },
   { name: "Jordan 720",   url: "https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
   { name: "Jordan Songs", url: "https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" },
   { name: "Al Mamlaka",   url: "https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
@@ -159,37 +138,61 @@ const channels = [
   { name: "Roya TV 720",  url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" }
 ];
 
-// Create channel buttons
+// Channel buttons
 const buttonsDiv = document.getElementById('buttons');
 channels.forEach((ch, i) => {
   const btn = document.createElement('button');
   btn.textContent = ch.name;
-  btn.dataset.url = ch.url;
   btn.onclick = () => playChannel(ch.url, btn);
   buttonsDiv.appendChild(btn);
   if (i === 0) playChannel(ch.url, btn);
 });
 
-// Unmute button handler
+// Unmute
 unmuteBtn.onclick = () => {
   video.muted = false;
   unmuteOverlay.classList.add('hidden');
 };
 
-// Show unmute overlay when changing channels or on first load
 function showUnmutePrompt() {
-  video.muted = true; // reset to muted (safer)
+  video.muted = true;
   unmuteOverlay.classList.remove('hidden');
 }
 
+// Custom controls logic
+playPauseBtn.onclick = () => {
+  if (video.paused) {
+    video.play();
+    playPauseBtn.textContent = 'Pause';
+  } else {
+    video.pause();
+    playPauseBtn.textContent = 'Play';
+  }
+};
+
+volumeSlider.oninput = () => video.volume = volumeSlider.value;
+
+// Seek bar
+progress.onclick = (e) => {
+  const rect = progress.getBoundingClientRect();
+  const pos = (e.clientX - rect.left) / rect.width;
+  video.currentTime = pos * video.duration;
+};
+
+// Update progress bar
+video.addEventListener('timeupdate', () => {
+  if (video.duration) {
+    const percent = (video.currentTime / video.duration) * 100;
+    progressFilled.style.width = percent + '%';
+  }
+});
+
 function playChannel(url, clickedBtn) {
-  // UI feedback
   document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
   if (clickedBtn) clickedBtn.classList.add('active');
   status.textContent = "Loading...";
-  showUnmutePrompt(); // show unmute button after channel change
+  showUnmutePrompt();
 
-  // Cleanup previous
   if (currentHls) {
     currentHls.destroy();
     currentHls = null;
@@ -226,12 +229,9 @@ function playChannel(url, clickedBtn) {
     currentHls.attachMedia(video);
 
     currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(() => {
-        status.textContent = "Tap screen if playback doesn't start";
-      });
+      video.play().catch(() => status.textContent = "Tap to play");
     });
 
-    // Very gentle catch-up
     currentHls.on(Hls.Events.FRAG_BUFFERED, () => {
       if (video.buffered.length > 0) {
         const drift = video.buffered.end(video.buffered.length - 1) - video.currentTime;
@@ -242,24 +242,14 @@ function playChannel(url, clickedBtn) {
     currentHls.on(Hls.Events.ERROR, (event, data) => {
       if (data.fatal) status.textContent = "Recovering...";
     });
-
-    currentHls.on(Hls.Events.LEVEL_SWITCHED, () => {
-      status.textContent = "Playing (stable mode)";
-    });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
-    video.addEventListener('loadedmetadata', () => {
-      video.play().catch(() => {});
-      status.textContent = "Playing";
-    }, { once: true });
+    video.addEventListener('loadedmetadata', () => video.play().catch(() => {}), { once: true });
   }
 }
 
-// Hide status after 10 seconds
-setTimeout(() => {
-  status.style.opacity = "0";
-  status.style.transition = "opacity 1s";
-}, 10000);
+// Hide status after 10s
+setTimeout(() => { status.style.opacity = "0"; status.style.transition = "opacity 1s"; }, 10000);
 </script>
 </body>
 </html>
