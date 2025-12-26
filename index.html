@@ -14,8 +14,7 @@
     #custom-controls {
       position: absolute;
       bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+      left: 20px;                     /* ← bottom left corner */
       background: rgba(0,0,0,0.65);
       padding: 10px 20px;
       border-radius: 12px;
@@ -53,28 +52,26 @@
       border-radius: 6px;
     }
     #buttons button.active { background: #0066cc; }
-    #refresh-btn {
-      background: #444;
-    }
+    #page-refresh-btn { background: #555; font-weight: bold; }
+    #page-refresh-btn:hover { background: #777; }
+    #refresh-btn { background: #444; }
     #refresh-btn:hover { background: #666; }
 
     #unmute-overlay {
       position: absolute;
-      top: 60px;                    /* start below top buttons bar */
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 60px;
+      left: 0; right: 0; bottom: 0;
       background: transparent;
       z-index: 25;
       transition: opacity 0.8s;
-      pointer-events: none;         /* clicks pass through overlay */
+      pointer-events: none;
     }
     #unmute-overlay.hidden {
       opacity: 0;
       pointer-events: none;
     }
     #unmute-btn {
-      pointer-events: auto;         /* button is clickable */
+      pointer-events: auto;
       position: absolute;
       bottom: 90px;
       right: 20px;
@@ -147,23 +144,32 @@ const channels = [
 // Create buttons
 const buttonsDiv = document.getElementById('buttons');
 
-// Refresh button
-const refreshBtn = document.createElement('button');
-refreshBtn.id = 'refresh-btn';
-refreshBtn.textContent = 'Refresh';
-refreshBtn.onclick = () => {
+// 1. Full page/dashboard refresh button
+const pageRefreshBtn = document.createElement('button');
+pageRefreshBtn.id = 'page-refresh-btn';
+pageRefreshBtn.textContent = '↻ Dashboard';
+pageRefreshBtn.onclick = () => {
+  window.location.reload(true);  // force reload from server
+};
+buttonsDiv.appendChild(pageRefreshBtn);
+
+// 2. Stream only refresh button
+const streamRefreshBtn = document.createElement('button');
+streamRefreshBtn.id = 'refresh-btn';
+streamRefreshBtn.textContent = 'Refresh Stream';
+streamRefreshBtn.onclick = () => {
   if (currentUrl) {
-    status.textContent = "Refreshing...";
+    status.textContent = "Refreshing stream...";
     playChannel(currentUrl, null);
     setTimeout(() => {
-      status.textContent = "Refreshed";
-      setTimeout(() => { status.style.opacity = "0"; }, 2000);
+      status.textContent = "Stream refreshed";
+      setTimeout(() => status.style.opacity = "0", 2000);
     }, 800);
   }
 };
-buttonsDiv.appendChild(refreshBtn);
+buttonsDiv.appendChild(streamRefreshBtn);
 
-// Channel buttons
+// 3. Channel buttons
 channels.forEach((ch, i) => {
   const btn = document.createElement('button');
   btn.textContent = ch.name;
@@ -179,7 +185,7 @@ channels.forEach((ch, i) => {
   }
 });
 
-// Unmute
+// Unmute handler
 unmuteBtn.onclick = () => {
   video.muted = false;
   unmuteOverlay.classList.add('hidden');
@@ -201,9 +207,9 @@ playPauseBtn.onclick = () => {
   }
 };
 
-// Core play function
+// Play channel function
 function playChannel(url, clickedBtn) {
-  document.querySelectorAll('#buttons button:not(#refresh-btn)').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#buttons button:not(#page-refresh-btn):not(#refresh-btn)').forEach(b => b.classList.remove('active'));
   if (clickedBtn) clickedBtn.classList.add('active');
 
   status.textContent = "Loading...";
@@ -266,33 +272,21 @@ function playChannel(url, clickedBtn) {
   }
 }
 
-// === Pause stream when screen is off / tab hidden ===
+// Pause/resume when screen off/on
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    // Screen off → stop playback & downloading
     video.pause();
-    if (currentHls) {
-      currentHls.stopLoad();
-    }
+    if (currentHls) currentHls.stopLoad();
     status.textContent = "Paused (screen off)";
   } else {
-    // Screen on → resume
     video.play().catch(() => {});
-    if (currentHls) {
-      currentHls.startLoad();
-    }
+    if (currentHls) currentHls.startLoad();
     status.textContent = "Resuming...";
-    setTimeout(() => { status.style.opacity = "0"; }, 3000);
+    setTimeout(() => status.style.opacity = "0", 3000);
   }
 });
 
-// Optional: extra pause on blur (some kiosk browsers)
-window.addEventListener('blur', () => {
-  video.pause();
-  if (currentHls) currentHls.stopLoad();
-});
-
-// Hide status after 10 seconds (initial load)
+// Hide initial status
 setTimeout(() => { 
   status.style.opacity = "0"; 
   status.style.transition = "opacity 1s"; 
