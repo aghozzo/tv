@@ -38,7 +38,7 @@
     #progress { flex: 1; height: 6px; background: #555; border-radius: 3px; cursor: pointer; }
     #progress-filled { height: 100%; background: #0066cc; width: 0%; border-radius: 3px; }
 
-    #buttons { /* top channel buttons - same as before */
+    #buttons { /* top channel buttons */
       position: fixed;
       top: 0; left: 0; right: 0;
       background: rgba(17,17,17,0.85);
@@ -60,24 +60,34 @@
     }
     #buttons button.active { background: #0066cc; }
 
-    #unmute-overlay { /* same unmute overlay */
+    /* Unmute overlay - more transparent + button in bottom right */
+    #unmute-overlay {
       position: absolute;
       inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,0.65);
+      background: rgba(0,0,0,0.5);         /* ← much more transparent */
       z-index: 25;
+      transition: opacity 0.8s;
+      pointer-events: auto;
     }
-    #unmute-overlay.hidden { opacity: 0; pointer-events: none; }
+    #unmute-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
     #unmute-btn {
-      padding: 20px 40px;
-      font-size: 1.8rem;
+      position: absolute;
+      bottom: 90px;                         /* above custom controls */
+      right: 20px;
+      padding: 14px 28px;
+      font-size: 1.3rem;
       background: #0066cc;
       color: white;
       border: none;
-      border-radius: 12px;
+      border-radius: 10px;
       cursor: pointer;
+      box-shadow: 0 3px 15px rgba(0,0,0,0.5);
+    }
+    #unmute-btn:hover {
+      background: #0077ee;
     }
 
     #status {
@@ -115,6 +125,7 @@
 <div id="buttons"></div>
 
 <script>
+// The rest of the JavaScript remains exactly the same as in the previous version
 const video = document.getElementById('video');
 const status = document.getElementById('status');
 const unmuteOverlay = document.getElementById('unmute-overlay');
