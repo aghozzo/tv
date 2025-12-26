@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TV Channels • Digital Frame</title>
+  <title>TV Channels • Minimal Lag Mode</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
   <style>
     html, body {
@@ -28,7 +28,7 @@
       gap: 8px;
       justify-content: center;
       position: fixed;
-      bottom: 0;
+      top: 0;
       left: 0;
       right: 0;
       z-index: 10;
@@ -51,12 +51,13 @@
     }
     #status {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      bottom: 70px; /* above buttons area */
+      left: 50%;
+      transform: translateX(-50%);
       color: #aaa;
       font-size: 12px;
       background: rgba(0,0,0,0.6);
-      padding: 4px 8px;
+      padding: 4px 12px;
       border-radius: 4px;
       pointer-events: none;
     }
@@ -64,12 +65,12 @@
 </head>
 <body>
 
-<div id="status">Loading...</div>
-<video id="video" autoplay muted playsinline controls></video>
+<div id="status">Loading channel...</div>
+<video id="video" autoplay muted playsinline></video> <!-- removed controls for cleaner kiosk feel -->
 <div id="buttons"></div>
 
 <script>
-// === Configuration & Channels ===
+// === Channels (use lowest bitrate/720p variants when possible) ===
 const video = document.getElementById('video');
 const status = document.getElementById('status');
 let currentHls = null;
@@ -86,7 +87,7 @@ const channels = [
   { name: "Roya TV 720",  url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" }
 ];
 
-// === Create Channel Buttons ===
+// === Create Buttons (now at top) ===
 const buttonsDiv = document.getElementById('buttons');
 channels.forEach((ch, i) => {
   const btn = document.createElement('button');
@@ -94,39 +95,43 @@ channels.forEach((ch, i) => {
   btn.dataset.url = ch.url;
   btn.onclick = () => playChannel(ch.url, btn);
   buttonsDiv.appendChild(btn);
-  if (i === 0) playChannel(ch.url, btn); // Auto-start first channel
+  if (i === 0) playChannel(ch.url, btn); // Auto-start first
 });
 
-// === Optimized Play Function for Low-Power Devices ===
+// === Ultra-Stable Config – Prioritizes NO STALLS over low latency ===
 function playChannel(url, clickedBtn) {
-  // Update UI
   document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
   if (clickedBtn) clickedBtn.classList.add('active');
   status.textContent = "Loading...";
 
-  // Clean up previous instance
   if (currentHls) {
     currentHls.destroy();
     currentHls = null;
   }
 
-  // Low-power friendly configuration
   const config = {
-    enableWorker: true,
-    lowLatencyMode: true,
-    liveSyncDurationCount: 3,
-    liveMaxLatencyDurationCount: 8,
-    maxBufferLength: 10,              // Target small buffer
-    maxMaxBufferLength: 15,           // Hard cap to save memory
-    maxBufferSize: 15 * 1000 * 1000,  // ~15MB max (important on Pi)
-    backBufferLength: 20,
-    abrEwmaFastLive: 5.0,
-    abrEwmaSlowLive: 12.0,
-    abrBandWidthFactor: 0.75,         // Conservative quality switching
-    abrBandWidthUpFactor: 0.6,
+    enableWorker: true,                    // Keep if Pi supports workers, helps demuxing
+    lowLatencyMode: false,                 // ← false! Better stability on weak hw (parts often cause issues)
+    liveSyncDurationCount: 6,              // Start further back → more initial buffer → fewer stalls
+    liveMaxLatencyDurationCount: 12,       // Allow bigger drift before aggressive catch-up
+    maxBufferLength: 8,                    // Very small target buffer (memory + CPU friendly)
+    maxMaxBufferLength: 12,                // Hard cap
+    maxBufferSize: 10 * 1000 * 1000,       // ~10 MB – very tight for low-power devices
+    backBufferLength: 5,                   // Trim history fast
+    maxBufferHole: 0.5,
+    maxStarvationDelay: 2,                 // Force quality drop sooner
+    abrEwmaFastLive: 6.0,                  // Slower reaction → less flipping
+    abrEwmaSlowLive: 15.0,
+    abrBandWidthFactor: 0.98,              // Very conservative – stay on low quality
+    abrBandWidthUpFactor: 0.95,            // Almost never upswitch
+    abrEwmaDefaultEstimate: 300000,        // Start assuming very low bandwidth (~300 kbps)
+    testBandwidth: false,                  // Skip initial test fragment
+    initialLiveManifestSize: 6,            // Preload more manifest entries
     enableSoftwareAES: true,
-    testBandwidth: false,             // Skip bandwidth test on start
-    initialLiveManifestSize: 4
+    appendErrorMaxRetry: 1,                // Fail fast on append errors
+    fragLoadingTimeOut: 8000,
+    fragLoadingMaxRetry: 2,
+    fragLoadingRetryDelay: 500
   };
 
   if (Hls.isSupported()) {
@@ -134,53 +139,33 @@ function playChannel(url, clickedBtn) {
     currentHls.loadSource(url);
     currentHls.attachMedia(video);
 
-    // Events
     currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(e => {
-        console.log('Autoplay blocked:', e);
-        status.textContent = "Tap to play";
-      });
+      video.play().catch(() => status.textContent = "Tap screen if needed");
     });
 
+    // Gentle catch-up (1.08–1.12x almost invisible on TV content)
     currentHls.on(Hls.Events.FRAG_BUFFERED, () => {
       if (video.buffered.length > 0) {
-        const bufferEnd = video.buffered.end(video.buffered.length - 1);
-        const current = video.currentTime;
-        const drift = bufferEnd - current;
-
-        if (drift > 12) {
-          video.playbackRate = 1.04;  // Very gentle catch-up
-        } else if (drift < 4) {
-          video.playbackRate = 1.0;
-        }
+        const drift = video.buffered.end(video.buffered.length - 1) - video.currentTime;
+        video.playbackRate = (drift > 9) ? 1.10 : 1.0;
       }
     });
 
     currentHls.on(Hls.Events.ERROR, (event, data) => {
-      if (data.fatal) {
-        status.textContent = "Error - trying to recover...";
-      }
+      if (data.fatal) status.textContent = "Recovering...";
     });
 
     currentHls.on(Hls.Events.LEVEL_SWITCHED, () => {
-      status.textContent = "Playing";
+      status.textContent = "Playing (stable mode)";
     });
-  } 
-  // Native HLS fallback (Safari/iOS)
-  else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
-    video.addEventListener('loadedmetadata', () => {
-      video.play().catch(() => {});
-      status.textContent = "Playing";
-    }, { once: true });
+    video.addEventListener('loadedmetadata', () => video.play().catch(() => {}), { once: true });
   }
 }
 
-// Hide status after 8 seconds
-setTimeout(() => {
-  status.style.opacity = "0";
-  status.style.transition = "opacity 1s";
-}, 8000);
+// Hide status after ~10s
+setTimeout(() => { status.style.opacity = "0"; status.style.transition = "opacity 1s"; }, 10000);
 </script>
 </body>
 </html>
