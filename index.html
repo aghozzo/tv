@@ -1,70 +1,55 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TV Channels • HA</title>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <style>
-    html, body { margin:0; padding:0; height:100%; background:#000; font-family:Arial,Helvetica,sans-serif; }
-    #video { width:100%; height:calc(100% - 54px); object-fit:contain; background:#000; }
-    #buttons { background:#111; padding:8px; display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
-    button {
-      padding:8px 14px; font-size:15px; background:#333; color:white; border:none;
-      border-radius:5px; cursor:pointer; transition:0.2s;
-    }
-    button:hover { background:#555; }
-    button.active { background:#0066cc; }
-  </style>
-</head>
-<body>
-
-<div id="buttons"></div>
-<video id="video" autoplay muted playsinline controls></video>
-
-<script>
-const video = document.getElementById('video');
-let currentHls = null;
-
-const channels = [
-  { name: "Roya TV",     url: "https://royatv-live.daioncdn.net/royatv/royatv.m3u8" },
-  { name: "Jordan 720",   url: "https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
-  { name: "Al Mamlaka",   url: "https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
-  // ... add the rest
-];
-
-const buttonsDiv = document.getElementById('buttons');
-
-channels.forEach((ch, i) => {
-  const btn = document.createElement('button');
-  btn.textContent = ch.name;
-  btn.dataset.url = ch.url;
-  btn.onclick = () => play(ch.url, btn);
-  buttonsDiv.appendChild(btn);
-  if (i === 0) play(ch.url, btn); // auto start first
-});
+// ... (rest of your code remains the same)
 
 function play(url, clickedBtn) {
-  // Remove active class from all buttons
+  // Remove active class...
   document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
   clickedBtn?.classList.add('active');
 
-  // Clean up previous HLS instance
   if (currentHls) {
     currentHls.destroy();
     currentHls = null;
   }
 
   if (Hls.isSupported()) {
-    currentHls = new Hls({ enableWorker: true });
+    const config = {
+      enableWorker: true,                  // offload to web worker if possible (good for Pi)
+      lowLatencyMode: true,                // crucial for live TV – enables PART handling
+      liveSyncDurationCount: 2,            // start ~2 segments behind live edge (default 3)
+      liveMaxLatencyDurationCount: 5,      // if >5 segments behind → force catch-up
+      maxBufferLength: 12,                 // target buffer ~12s (default 30s) – less waiting
+      maxMaxBufferLength: 20,              // hard cap – prevents memory hogging on long play
+      maxBufferSize: 0,                    // 0 = unlimited (or try 30*1000*1000 = 30MB)
+      abrEwmaFastLive: 4.0,                // faster bandwidth reaction
+      abrEwmaSlowLive: 10.0,
+      abrBandWidthFactor: 0.90,            // more conservative down-switch → less starvation
+      abrBandWidthUpFactor: 0.8,           // quicker up-switch when bandwidth good
+      initialLiveManifestSize: 3,          // preload a bit more manifest entries at start
+      backBufferLength: 30                 // keep some history (helps on seek/stall)
+    };
+
+    currentHls = new Hls(config);
     currentHls.loadSource(url);
     currentHls.attachMedia(video);
-    currentHls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+
+    currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play().catch(e => console.log('Play error:', e));
+    });
+
+    // Optional: gentle catch-up if drifting (some users like it)
+    currentHls.on(Hls.Events.FRAG_BUFFERED, () => {
+      if (video.buffered.length > 0) {
+        const bufferEnd = video.buffered.end(video.buffered.length - 1);
+        const current = video.currentTime;
+        if (bufferEnd - current > 8) {  // too much buffer → gently speed up
+          video.playbackRate = 1.08;    // 8% faster – almost unnoticeable
+        } else {
+          video.playbackRate = 1.0;
+        }
+      }
+    });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    // native Safari fallback – usually smoother on Apple hardware
     video.src = url;
     video.addEventListener('loadedmetadata', () => video.play().catch(() => {}), { once: true });
   }
 }
-</script>
-</body>
-</html>
