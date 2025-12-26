@@ -14,7 +14,7 @@
     #custom-controls {
       position: absolute;
       bottom: 20px;
-      left: 20px;                     /* ← bottom left corner */
+      left: 20px;
       background: rgba(0,0,0,0.65);
       padding: 10px 20px;
       border-radius: 12px;
@@ -39,7 +39,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      justify-content: center;
+      align-items: center;
       z-index: 20;
       backdrop-filter: blur(4px);
     }
@@ -52,10 +52,17 @@
       border-radius: 6px;
     }
     #buttons button.active { background: #0066cc; }
-    #page-refresh-btn { background: #555; font-weight: bold; }
-    #page-refresh-btn:hover { background: #777; }
-    #refresh-btn { background: #444; }
-    #refresh-btn:hover { background: #666; }
+
+    /* Dashboard refresh button - far right, different color */
+    #dashboard-refresh {
+      background: #8B0000;          /* dark red */
+      color: white;
+      font-weight: bold;
+      margin-left: auto;            /* pushes it to the far right */
+    }
+    #dashboard-refresh:hover {
+      background: #A52A2A;          /* lighter red on hover */
+    }
 
     #unmute-overlay {
       position: absolute;
@@ -144,32 +151,17 @@ const channels = [
 // Create buttons
 const buttonsDiv = document.getElementById('buttons');
 
-// 1. Full page/dashboard refresh button
-const pageRefreshBtn = document.createElement('button');
-pageRefreshBtn.id = 'page-refresh-btn';
-pageRefreshBtn.textContent = '↻ Dashboard';
-pageRefreshBtn.onclick = () => {
-  window.location.reload(true);  // force reload from server
+// Dashboard refresh button (far right, only this one)
+const dashboardBtn = document.createElement('button');
+dashboardBtn.id = 'dashboard-refresh';
+dashboardBtn.textContent = 'Dashboard';
+dashboardBtn.onclick = () => {
+  status.textContent = "Reloading...";
+  window.location.reload(true);  // full reload from server
 };
-buttonsDiv.appendChild(pageRefreshBtn);
+buttonsDiv.appendChild(dashboardBtn);
 
-// 2. Stream only refresh button
-const streamRefreshBtn = document.createElement('button');
-streamRefreshBtn.id = 'refresh-btn';
-streamRefreshBtn.textContent = 'Refresh Stream';
-streamRefreshBtn.onclick = () => {
-  if (currentUrl) {
-    status.textContent = "Refreshing stream...";
-    playChannel(currentUrl, null);
-    setTimeout(() => {
-      status.textContent = "Stream refreshed";
-      setTimeout(() => status.style.opacity = "0", 2000);
-    }, 800);
-  }
-};
-buttonsDiv.appendChild(streamRefreshBtn);
-
-// 3. Channel buttons
+// Channel buttons (appear before the refresh button in flow, but refresh is pushed to end)
 channels.forEach((ch, i) => {
   const btn = document.createElement('button');
   btn.textContent = ch.name;
@@ -185,7 +177,7 @@ channels.forEach((ch, i) => {
   }
 });
 
-// Unmute handler
+// Unmute
 unmuteBtn.onclick = () => {
   video.muted = false;
   unmuteOverlay.classList.add('hidden');
@@ -207,9 +199,8 @@ playPauseBtn.onclick = () => {
   }
 };
 
-// Play channel function
 function playChannel(url, clickedBtn) {
-  document.querySelectorAll('#buttons button:not(#page-refresh-btn):not(#refresh-btn)').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#buttons button:not(#dashboard-refresh)').forEach(b => b.classList.remove('active'));
   if (clickedBtn) clickedBtn.classList.add('active');
 
   status.textContent = "Loading...";
@@ -272,7 +263,7 @@ function playChannel(url, clickedBtn) {
   }
 }
 
-// Pause/resume when screen off/on
+// Pause/resume on screen off/on
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     video.pause();
