@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TV Channels • Stable Custom Controls</title>
+  <title>TV Channels • Minimal Controls</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -19,24 +19,19 @@
       background: rgba(0,0,0,0.7);
       padding: 10px;
       display: flex;
-      align-items: center;
-      gap: 12px;
+      justify-content: center;
       z-index: 15;
-      flex-wrap: wrap;
     }
-    button, input[type="range"] {
-      padding: 8px;
-      font-size: 16px;
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
       background: #333;
       color: white;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
     }
     button:hover { background: #555; }
-    input[type="range"] { flex: 1; min-width: 120px; }
-    #progress { flex: 1; height: 6px; background: #555; border-radius: 3px; cursor: pointer; }
-    #progress-filled { height: 100%; background: #0066cc; width: 0%; border-radius: 3px; }
 
     #buttons { /* top channel buttons */
       position: fixed;
@@ -60,11 +55,11 @@
     }
     #buttons button.active { background: #0066cc; }
 
-    /* Unmute overlay - more transparent + button in bottom right */
+    /* Unmute overlay - fully transparent background */
     #unmute-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(0,0,0,0);         /* ← much more transparent */
+      background: transparent;           /* ← fully transparent */
       z-index: 25;
       transition: opacity 0.8s;
       pointer-events: auto;
@@ -75,8 +70,8 @@
     }
     #unmute-btn {
       position: absolute;
-      bottom: 90px;                         /* above custom controls */
-      right: 50px;
+      bottom: 90px;
+      right: 20px;
       padding: 14px 28px;
       font-size: 1.3rem;
       background: #0066cc;
@@ -116,8 +111,6 @@
 
   <div id="custom-controls">
     <button id="play-pause">Play</button>
-    <div id="progress"><div id="progress-filled"></div></div>
-    <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
     <div id="status">Loading channel...</div>
   </div>
 </div>
@@ -125,20 +118,16 @@
 <div id="buttons"></div>
 
 <script>
-// The rest of the JavaScript remains exactly the same as in the previous version
 const video = document.getElementById('video');
 const status = document.getElementById('status');
 const unmuteOverlay = document.getElementById('unmute-overlay');
 const unmuteBtn = document.getElementById('unmute-btn');
 const playPauseBtn = document.getElementById('play-pause');
-const volumeSlider = document.getElementById('volume');
-const progress = document.getElementById('progress');
-const progressFilled = document.getElementById('progress-filled');
 
 let currentHls = null;
 
 const channels = [
-  { name: "Roya",     url: "https://royatv-live.daioncdn.net/royatv/royatv.m3u8" },
+  { name: "RoyaTV",     url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
   { name: "Jordan",   url: "https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
   { name: "JorSongs", url: "https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" },
   { name: "Mamlaka",   url: "https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
@@ -146,7 +135,7 @@ const channels = [
   { name: "Jazeera",   url: "https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
   { name: "Arabiya",   url: "https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
   { name: "NogFM",    url: "https://nogoumtv.nrpstream.com/hls/stream.m3u8" },
-  { name: "Roya720",  url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" }
+  { name: "RoyaTV360",  url: "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8" }
 ];
 
 // Channel buttons
@@ -170,7 +159,7 @@ function showUnmutePrompt() {
   unmuteOverlay.classList.remove('hidden');
 }
 
-// Custom controls logic
+// Simple Play/Pause
 playPauseBtn.onclick = () => {
   if (video.paused) {
     video.play();
@@ -180,23 +169,6 @@ playPauseBtn.onclick = () => {
     playPauseBtn.textContent = 'Play';
   }
 };
-
-volumeSlider.oninput = () => video.volume = volumeSlider.value;
-
-// Seek bar
-progress.onclick = (e) => {
-  const rect = progress.getBoundingClientRect();
-  const pos = (e.clientX - rect.left) / rect.width;
-  video.currentTime = pos * video.duration;
-};
-
-// Update progress bar
-video.addEventListener('timeupdate', () => {
-  if (video.duration) {
-    const percent = (video.currentTime / video.duration) * 100;
-    progressFilled.style.width = percent + '%';
-  }
-});
 
 function playChannel(url, clickedBtn) {
   document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
