@@ -1,15 +1,20 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Live TV Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TV Channels • HA</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
-    html, body { margin:0; padding:0; height:100%; background:black; display:flex; flex-direction:column; }
-    #video { flex-grow:1; width:100%; object-fit:contain; background:black; }
-    #buttons { display:flex; flex-wrap:wrap; background:#111; padding:4px; }
-    button { margin:4px; padding:6px 10px; font-size:14px; cursor:pointer; border:none; border-radius:4px; background:#333; color:white; }
+    html, body { margin:0; padding:0; height:100%; background:#000; font-family:Arial,Helvetica,sans-serif; }
+    #video { width:100%; height:calc(100% - 54px); object-fit:contain; background:#000; }
+    #buttons { background:#111; padding:8px; display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+    button {
+      padding:8px 14px; font-size:15px; background:#333; color:white; border:none;
+      border-radius:5px; cursor:pointer; transition:0.2s;
+    }
     button:hover { background:#555; }
+    button.active { background:#0066cc; }
   </style>
 </head>
 <body>
@@ -19,38 +24,47 @@
 
 <script>
 const video = document.getElementById('video');
+let currentHls = null;
 
 const channels = [
-  {name:"Roya TV", url:"https://royatv-live.daioncdn.net/royatv/royatv.m3u8"},
-  {name:"Jordan 720", url:"https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8"},
-  {name:"Jordan Songs", url:"https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8"},
-  {name:"Al Mamlaka", url:"https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8"},
-  {name:"Amman TV", url:"https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8"},
-  {name:"Al Jazeera", url:"https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8"},
-  {name:"Al Arabiya", url:"https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8"},
-  {name:"Nogoum FM", url:"https://nogoumtv.nrpstream.com/hls/stream.m3u8"},
-  {name:"Roya TV 720", url:"https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8"}
+  { name: "Roya TV",     url: "https://royatv-live.daioncdn.net/royatv/royatv.m3u8" },
+  { name: "Jordan 720",   url: "https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
+  { name: "Al Mamlaka",   url: "https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
+  // ... add the rest
 ];
 
-// Create buttons
 const buttonsDiv = document.getElementById('buttons');
-channels.forEach(ch => {
+
+channels.forEach((ch, i) => {
   const btn = document.createElement('button');
   btn.textContent = ch.name;
-  btn.onclick = () => playChannel(ch.url);
+  btn.dataset.url = ch.url;
+  btn.onclick = () => play(ch.url, btn);
   buttonsDiv.appendChild(btn);
+  if (i === 0) play(ch.url, btn); // auto start first
 });
 
-// Play a channel
-function playChannel(url) {
-  // Set the video src directly — HA will handle playback server-side
-  video.src = url;
-  video.play().catch(e => console.log('Autoplay blocked', e));
+function play(url, clickedBtn) {
+  // Remove active class from all buttons
+  document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
+  clickedBtn?.classList.add('active');
+
+  // Clean up previous HLS instance
+  if (currentHls) {
+    currentHls.destroy();
+    currentHls = null;
+  }
+
+  if (Hls.isSupported()) {
+    currentHls = new Hls({ enableWorker: true });
+    currentHls.loadSource(url);
+    currentHls.attachMedia(video);
+    currentHls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = url;
+    video.addEventListener('loadedmetadata', () => video.play().catch(() => {}), { once: true });
+  }
 }
-
-// Play first channel automatically
-playChannel(channels[0].url);
 </script>
-
 </body>
 </html>
