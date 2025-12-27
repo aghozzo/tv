@@ -139,7 +139,7 @@
   <video id="video" autoplay muted playsinline></video>
 
   <div id="unmute-overlay">
-    <button id="unmute-btn"> -🔊 </button>
+    <button id="unmute-btn">🔊 Start Sound</button>
   </div>
 
   <!-- Play/Pause button - bottom left -->
@@ -171,7 +171,6 @@ const channels = [
   { name: "RoyaTV360", url: "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8" }
 ];
 
-
 // Unmute
 unmuteBtn.onclick = () => {
   video.muted = false;
@@ -195,11 +194,7 @@ playPauseBtn.onclick = () => {
 };
 
 
-function playChannel(url, clickedBtn) {
-  document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
-  if (clickedBtn) clickedBtn.classList.add('active');
 
-  status.textContent = "Loading...";
   showUnmutePrompt();
 
   if (currentHls) {
