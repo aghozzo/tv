@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TV Channels • Digital Frame</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; background:#000; overflow:hidden; font-family:Arial,Helvetica,sans-serif; }
+    #video-container { position:relative; width:100%; height:100%; }
+    #video { width:100%; height:100%; object-fit:contain; background:#000; }
+    
+    /* Play/Pause - bottom left */
+    #play-pause {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      padding: 12px 24px;
+      font-size: 18px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      z-index: 15;
+    }
+    #play-pause:hover { background: rgba(50,50,50,0.9); }
+
+    /* Volume - vertical on right side */
+    #volume-container {
+      position: absolute;
+      right: 20px;
+      bottom: 50%;
+      transform: translateY(50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      z-index: 15;
+      background: rgba(0,0,0,0.6);
+      padding: 20px 10px;
+      border-radius: 12px;
+    }
+    #volume-label {
+      color: white;
+      font-size: 14px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+    }
+    input[type="range"] {
+      writing-mode: bt-lr; /* vertical */
+      -webkit-appearance: slider-vertical;
+      width: 8px;
+      height: 200px;
+      background: #444;
+      border-radius: 5px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #0066cc;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    #buttons {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: rgba(17,17,17,0.85);
+      padding: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      z-index: 20;
+      backdrop-filter: blur(4px);
+    }
+    #buttons button {
+      padding: 8px 16px;
+      font-size: 15px;
+      background: #2a2a2a;
+      color: white;
+      border: none;
+      border-radius: 6px;
+    }
+    #buttons button.active { background: #0066cc; }
+
+    #unmute-overlay {
+      position: absolute;
+      top: 60px;
+      left: 0; right: 0; bottom: 0;
+      background: transparent;
+      z-index: 25;
+      transition: opacity 0.8s;
+      pointer-events: none;
+    }
+    #unmute-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #unmute-btn {
+      pointer-events: auto;
+      position: absolute;
+      bottom: 90px;
+      right: 20px;
+      padding: 12px 24px;
+      font-size: 1.2rem;
+      background: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+    }
+    #unmute-btn:hover { background: #0077ee; }
+
+    #status {
+      position: absolute;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #aaa;
+      font-size: 13px;
+      background: rgba(0,0,0,0.6);
+      padding: 6px 12px;
+      border-radius: 6px;
+      pointer-events: none;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+
+<div id="video-container">
+  <video id="video" autoplay muted playsinline></video>
+
+  <div id="unmute-overlay">
+    <button id="unmute-btn">🔊 Start Sound</button>
+  </div>
+
+  <!-- Play/Pause button - bottom left -->
+  <button id="play-pause">Play</button>
+
+  <!-- Volume vertical - right side -->
+  <div id="volume-container">
+    <span id="volume-label">Vol</span>
+    <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5" orient="vertical">
+  </div>
+
+  <div id="status">Loading channel...</div>
+</div>
+
+<div id="buttons"></div>
+
+<script>
+const video = document.getElementById('video');
+const status = document.getElementById('status');
+const unmuteOverlay = document.getElementById('unmute-overlay');
+const unmuteBtn = document.getElementById('unmute-btn');
+const playPauseBtn = document.getElementById('play-pause');
+const volumeSlider = document.getElementById('volume');
+
+let currentHls = null;
+let currentUrl = null;
+
+const channels = [
+  { name: "RoyaTV",    url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
+  { name: "Jordan",    url: "https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
+  { name: "JorSongs",  url: "https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" },
+  { name: "Mamlaka",   url: "https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
+  { name: "Amman",     url: "https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
+  { name: "Jazeera",   url: "https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
+  { name: "Arabiya",   url: "https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
+  { name: "NogFM",     url: "https://nogoumtv.nrpstream.com/hls/stream.m3u8" },
+  { name: "MTV", url: "https://hms.pfs.gdn/hms/v1/broadcast/mtv/primary/tracks-v5a1/mono.m3u8" }
+];
+
+// Create channel buttons (centered)
+const buttonsDiv = document.getElementById('buttons');
+channels.forEach((ch, i) => {
+  const btn = document.createElement('button');
+  btn.textContent = ch.name;
+  btn.dataset.url = ch.url;
+  btn.onclick = () => {
+    playChannel(ch.url, btn);
+    currentUrl = ch.url;
+  };
+  buttonsDiv.appendChild(btn);
+  if (i === 0) {
+    playChannel(ch.url, btn);
+    currentUrl = ch.url;
+  }
+});
+
+// Unmute
+unmuteBtn.onclick = () => {
+  video.muted = false;
+  unmuteOverlay.classList.add('hidden');
+};
+
+function showUnmutePrompt() {
+  video.muted = true;
+  unmuteOverlay.classList.remove('hidden');
+}
+
+// Play/Pause
+playPauseBtn.onclick = () => {
+  if (video.paused) {
+    video.play().catch(() => {});
+    playPauseBtn.textContent = 'Pause';
+  } else {
+    video.pause();
+    playPauseBtn.textContent = 'Play';
+  }
+};
+
+// Volume control
+volumeSlider.oninput = () => {
+  video.volume = volumeSlider.value;
+};
+volumeSlider.value = 0.5;  // initial volume
+
+function playChannel(url, clickedBtn) {
+  document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
+  if (clickedBtn) clickedBtn.classList.add('active');
+
+  status.textContent = "Loading...";
+  showUnmutePrompt();
+
+  if (currentHls) {
+    currentHls.destroy();
+    currentHls = null;
+  }
+
+  const config = {
+    enableWorker: true,
+    lowLatencyMode: false,
+    liveSyncDurationCount: 6,
+    liveMaxLatencyDurationCount: 12,
+    maxBufferLength: 8,
+    maxMaxBufferLength: 12,
+    maxBufferSize: 10 * 1000 * 1000,
+    backBufferLength: 5,
+    maxBufferHole: 0.5,
+    maxStarvationDelay: 2,
+    abrEwmaFastLive: 6.0,
+    abrEwmaSlowLive: 15.0,
+    abrBandWidthFactor: 0.98,
+    abrBandWidthUpFactor: 0.95,
+    abrEwmaDefaultEstimate: 300000,
+    testBandwidth: false,
+    initialLiveManifestSize: 6,
+    enableSoftwareAES: true,
+    appendErrorMaxRetry: 1,
+    fragLoadingTimeOut: 8000,
+    fragLoadingMaxRetry: 2,
+    fragLoadingRetryDelay: 500
+  };
+
+  if (Hls.isSupported()) {
+    currentHls = new Hls(config);
+    currentHls.loadSource(url);
+    currentHls.attachMedia(video);
+
+    currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play().catch(() => status.textContent = "Tap to play");
+    });
+
+    currentHls.on(Hls.Events.FRAG_BUFFERED, () => {
+      if (video.buffered.length > 0) {
+        const drift = video.buffered.end(video.buffered.length - 1) - video.currentTime;
+        video.playbackRate = (drift > 9) ? 1.10 : 1.0;
+      }
+    });
+
+    currentHls.on(Hls.Events.ERROR, (event, data) => {
+      if (data.fatal) status.textContent = "Recovering...";
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = url;
+    video.addEventListener('loadedmetadata', () => {
+      video.play().catch(() => {});
+    }, { once: true });
+  }
+}
+
+// Stop stream when screen off / frame sleeps
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    video.pause();
+    if (currentHls) currentHls.stopLoad();
+    status.textContent = "Paused (screen off)";
+  } else {
+    video.play().catch(() => {});
+    if (currentHls) currentHls.startLoad();
+    status.textContent = "Resuming...";
+    setTimeout(() => status.style.opacity = "0", 3000);
+  }
+});
+
+window.addEventListener('blur', () => {
+  video.pause();
+  if (currentHls) currentHls.stopLoad();
+});
+
+window.addEventListener('focus', () => {
+  video.play().catch(() => {});
+  if (currentHls) currentHls.startLoad();
+});
+
+// Hide initial status
+setTimeout(() => { 
+  status.style.opacity = "0"; 
+  status.style.transition = "opacity 1s"; 
+}, 10000);
+</script>
+</body>
+</html>
