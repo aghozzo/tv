@@ -108,13 +108,13 @@
       bottom: 90px;
       right: 20px;
       padding: 12px 24px;
-      font-size: 1.2rem;
+      font-size: 0.2rem;
       background: #0066cc;
       color: white;
       border: none;
-      border-radius: 10px;
+      border-radius: 5px;
       cursor: pointer;
-      box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.4);
     }
     #unmute-btn:hover { background: #0077ee; }
 
@@ -171,6 +171,23 @@ const channels = [
   { name: "RoyaTV360", url: "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8" }
 ];
 
+// // Create channel buttons (centered)
+// const buttonsDiv = document.getElementById('buttons');
+// channels.forEach((ch, i) => {
+//   const btn = document.createElement('button');
+//   btn.textContent = ch.name;
+//   btn.dataset.url = ch.url;
+//   btn.onclick = () => {
+//     playChannel(ch.url, btn);
+//     currentUrl = ch.url;
+//   };
+//   buttonsDiv.appendChild(btn);
+//   if (i === 0) {
+//     playChannel(ch.url, btn);
+//     currentUrl = ch.url;
+//   }
+// });
+
 // Unmute
 unmuteBtn.onclick = () => {
   video.muted = false;
@@ -193,8 +210,17 @@ playPauseBtn.onclick = () => {
   }
 };
 
+// Volume control
+volumeSlider.oninput = () => {
+  video.volume = volumeSlider.value;
+};
+volumeSlider.value = 0.5;  // initial volume
 
+function playChannel(url, clickedBtn) {
+  document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
+  if (clickedBtn) clickedBtn.classList.add('active');
 
+  status.textContent = "Loading...";
   showUnmutePrompt();
 
   if (currentHls) {
