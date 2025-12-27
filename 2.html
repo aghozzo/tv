@@ -10,8 +10,85 @@
     html, body { height:100%; background:#000; overflow:hidden; font-family:Arial,Helvetica,sans-serif; }
     #video-container { position:relative; width:100%; height:100%; }
     #video { width:100%; height:100%; object-fit:contain; background:#000; }
-   
-    /* Unmute overlay - kept as original */
+    
+    /* Play/Pause - bottom left */
+    #play-pause {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      padding: 12px 24px;
+      font-size: 18px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      z-index: 15;
+    }
+    #play-pause:hover { background: rgba(50,50,50,0.9); }
+
+    /* Volume - vertical on right side */
+    #volume-container {
+      position: absolute;
+      right: 20px;
+      bottom: 50%;
+      transform: translateY(50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      z-index: 15;
+      background: rgba(0,0,0,0.6);
+      padding: 20px 10px;
+      border-radius: 12px;
+    }
+    #volume-label {
+      color: white;
+      font-size: 14px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+    }
+    input[type="range"] {
+      writing-mode: bt-lr; /* vertical */
+      -webkit-appearance: slider-vertical;
+      width: 8px;
+      height: 200px;
+      background: #444;
+      border-radius: 5px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #0066cc;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    #buttons {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: rgba(17,17,17,0.85);
+      padding: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      z-index: 20;
+      backdrop-filter: blur(4px);
+    }
+    #buttons button {
+      padding: 8px 16px;
+      font-size: 15px;
+      background: #2a2a2a;
+      color: white;
+      border: none;
+      border-radius: 6px;
+    }
+    #buttons button.active { background: #0066cc; }
+
     #unmute-overlay {
       position: absolute;
       top: 60px;
@@ -57,30 +134,45 @@
   </style>
 </head>
 <body>
+
 <div id="video-container">
   <video id="video" autoplay muted playsinline></video>
+
   <div id="unmute-overlay">
     <button id="unmute-btn">🔊 Start Sound</button>
   </div>
+
+  <!-- Play/Pause button - bottom left -->
+  <button id="play-pause">Play</button>
+
+  <!-- Volume vertical - right side -->
+  <div id="volume-container">
+    <span id="volume-label">Vol</span>
+    <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5" orient="vertical">
+  </div>
+
   <div id="status">Loading channel...</div>
 </div>
+
+<div id="buttons"></div>
 
 <script>
 const video = document.getElementById('video');
 const status = document.getElementById('status');
 const unmuteOverlay = document.getElementById('unmute-overlay');
 const unmuteBtn = document.getElementById('unmute-btn');
+const playPauseBtn = document.getElementById('play-pause');
+const volumeSlider = document.getElementById('volume');
 
 let currentHls = null;
 let currentUrl = null;
 
 const channels = [
-  { name: "RoyaTV", url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
+  { name: "RoyaTV360", url: "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8" }
 ];
 
-// Automatically play the only channel (no button selector anymore)
-playChannel(channels[0].url);
 
+// Unmute
 unmuteBtn.onclick = () => {
   video.muted = false;
   unmuteOverlay.classList.add('hidden');
@@ -91,7 +183,22 @@ function showUnmutePrompt() {
   unmuteOverlay.classList.remove('hidden');
 }
 
-function playChannel(url) {
+// Play/Pause
+playPauseBtn.onclick = () => {
+  if (video.paused) {
+    video.play().catch(() => {});
+    playPauseBtn.textContent = 'Pause';
+  } else {
+    video.pause();
+    playPauseBtn.textContent = 'Play';
+  }
+};
+
+
+function playChannel(url, clickedBtn) {
+  document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
+  if (clickedBtn) clickedBtn.classList.add('active');
+
   status.textContent = "Loading...";
   showUnmutePrompt();
 
@@ -129,15 +236,18 @@ function playChannel(url) {
     currentHls = new Hls(config);
     currentHls.loadSource(url);
     currentHls.attachMedia(video);
+
     currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
       video.play().catch(() => status.textContent = "Tap to play");
     });
+
     currentHls.on(Hls.Events.FRAG_BUFFERED, () => {
       if (video.buffered.length > 0) {
         const drift = video.buffered.end(video.buffered.length - 1) - video.currentTime;
         video.playbackRate = (drift > 9) ? 1.10 : 1.0;
       }
     });
+
     currentHls.on(Hls.Events.ERROR, (event, data) => {
       if (data.fatal) status.textContent = "Recovering...";
     });
@@ -174,9 +284,9 @@ window.addEventListener('focus', () => {
 });
 
 // Hide initial status
-setTimeout(() => {
-  status.style.opacity = "0";
-  status.style.transition = "opacity 1s";
+setTimeout(() => { 
+  status.style.opacity = "0"; 
+  status.style.transition = "opacity 1s"; 
 }, 10000);
 </script>
 </body>
