@@ -1,90 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>TV • Digital Frame</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TV • Digital Frame</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; background:#000; overflow:hidden; font-family:Arial,Helvetica,sans-serif; }
+    #video-container { position:relative; width:100%; height:100%; }
+    #video { width:100%; height:100%; object-fit:contain; background:#000; }
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
+    #play-pause {
+      position: absolute;
+      bottom: 6px;
+      left: 10px;
+      padding: 6px 14px;
+      font-size: 15px;
+      min-width: 60px;
+      background: rgba(0,0,0,0.65);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      z-index: 15;
+      transition: background 0.2s, opacity 0.6s;
+    }
 
-<style>
-* { margin:0; padding:0; box-sizing:border-box; }
-html, body {
-  width:100%;
-  height:100%;
-  background:#000;
-  overflow:hidden;
-  font-family:Arial,Helvetica,sans-serif;
-}
+    #play-pause:hover {
+      background: rgba(40,40,40,0.9);
+    }
 
-#video-container {
-  position:relative;
-  width:100%;
-  height:100%;
-}
+    #unmute-btn {
+      position: absolute;
+      bottom: 6px;
+      right: 10px;
+      padding: 6px 12px;
+      font-size: 15px;
+      min-width: 48px;
+      background: rgba(0,0,0,0.65);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      z-index: 15;
+      transition: background 0.2s, opacity 0.6s;
+      text-align: center;
+    }
 
-#video {
-  width:100%;
-  height:100%;
-  object-fit:contain;
-  background:#000;
-}
+    #unmute-btn:hover {
+      background: rgba(40,40,40,0.9);
+    }
 
-/* Controls */
-.ctrl {
-  position:absolute;
-  bottom:6px;
-  padding:6px 14px;
-  font-size:15px;
-  background:rgba(0,0,0,0.65);
-  color:white;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
-  z-index:10;
-  transition:opacity .6s, background .2s;
-}
+    #unmute-btn.muted {
+      background: rgba(100,0,0,0.65);
+    }
+    #unmute-btn:hover.muted {
+      background: rgba(130,0,0,0.85);
+    }
 
-.ctrl:hover { background:rgba(40,40,40,0.9); }
+    #volume {
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 260px;
+      z-index: 14;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 5px;
+      background: rgba(90,90,90,0.65);
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+      transition: opacity 0.6s;
+    }
 
-#play-pause { left:10px; }
-#unmute-btn { right:10px; min-width:48px; }
+    #volume::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #0066cc;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 5px rgba(0,102,204,0.7);
+    }
 
-#volume {
-  position:absolute;
-  bottom:6px;
-  left:50%;
-  transform:translateX(-50%);
-  width:260px;
-  z-index:9;
-}
-
-#status {
-  position:absolute;
-  bottom:60px;
-  left:50%;
-  transform:translateX(-50%);
-  color:#ccc;
-  font-size:13px;
-  background:rgba(0,0,0,.6);
-  padding:6px 14px;
-  border-radius:8px;
-  pointer-events:none;
-  z-index:8;
-  transition:opacity 1s;
-}
-</style>
+    #status {
+      position: absolute;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #ccc;
+      font-size: 13px;
+      background: rgba(0,0,0,0.6);
+      padding: 6px 14px;
+      border-radius: 8px;
+      pointer-events: none;
+      z-index: 10;
+      transition: opacity 1.2s;
+    }
+  </style>
 </head>
-
 <body>
 <div id="video-container">
   <video id="video" autoplay muted playsinline></video>
 
-  <button id="play-pause" class="ctrl">Pause</button>
+  <button id="play-pause">Play</button>
   <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
-  <button id="unmute-btn" class="ctrl">🔇</button>
+  <button id="unmute-btn">🔇</button>
 
-  <div id="status">Loading…</div>
+  <div id="status">Loading channel...</div>
 </div>
 
 <script>
@@ -92,21 +119,15 @@ const video = document.getElementById('video');
 const status = document.getElementById('status');
 const playPauseBtn = document.getElementById('play-pause');
 const unmuteBtn = document.getElementById('unmute-btn');
-const volume = document.getElementById('volume');
-const controls = document.querySelectorAll('.ctrl, #volume');
+const volumeSlider = document.getElementById('volume');
 
-const STREAM_URL = "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8";
-let hls = null;
-let lastProgress = Date.now();
+let currentHls = null;
+const channelUrl = "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8";
 
-/* -------------------- UI -------------------- */
-function updateMute() {
-  unmuteBtn.textContent = video.muted ? '🔇' : '🔊';
-}
-
+/* ---------- Play / Pause ---------- */
 playPauseBtn.onclick = () => {
   if (video.paused) {
-    video.play().catch(()=>{});
+    video.play().catch(() => {});
     playPauseBtn.textContent = 'Pause';
   } else {
     video.pause();
@@ -114,44 +135,43 @@ playPauseBtn.onclick = () => {
   }
 };
 
+/* ---------- Mute ---------- */
 unmuteBtn.onclick = () => {
   video.muted = !video.muted;
-  updateMute();
+  updateUnmuteButton();
 };
 
-volume.oninput = () => {
-  video.volume = volume.value;
+function updateUnmuteButton() {
+  if (video.muted) {
+    unmuteBtn.textContent = '🔇';
+    unmuteBtn.classList.add('muted');
+  } else {
+    unmuteBtn.textContent = '🔊';
+    unmuteBtn.classList.remove('muted');
+  }
+}
+
+/* ---------- Volume ---------- */
+volumeSlider.oninput = () => {
+  video.volume = parseFloat(volumeSlider.value);
   if (video.volume > 0 && video.muted) {
     video.muted = false;
-    updateMute();
+    updateUnmuteButton();
   }
 };
 
-/* -------------------- Controls auto-hide -------------------- */
-let uiTimer;
-function showControls() {
-  controls.forEach(c => c.style.opacity = '1');
-  clearTimeout(uiTimer);
-  uiTimer = setTimeout(hideControls, 10000);
-}
-function hideControls() {
-  controls.forEach(c => c.style.opacity = '0');
-}
-document.body.addEventListener('click', showControls);
-hideControls();
+/* ---------- Stream ---------- */
+function playChannel(url) {
+  status.textContent = "Loading...";
+  status.style.opacity = "1";
 
-/* -------------------- Stream -------------------- */
-function startStream() {
-  status.textContent = "Connecting…";
-  status.style.opacity = '1';
-
-  if (hls) hls.destroy();
+  if (currentHls) currentHls.destroy();
 
   video.muted = true;
-  updateMute();
+  updateUnmuteButton();
 
   if (Hls.isSupported()) {
-    hls = new Hls({
+    currentHls = new Hls({
       maxBufferLength: 20,
       maxMaxBufferLength: 30,
       backBufferLength: 0,
@@ -159,40 +179,41 @@ function startStream() {
       lowLatencyMode: false
     });
 
-    hls.loadSource(STREAM_URL);
-    hls.attachMedia(video);
+    currentHls.loadSource(url);
+    currentHls.attachMedia(video);
 
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(()=>{});
+    currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play().catch(() => status.textContent = "Tap to play");
     });
 
-    hls.on(Hls.Events.FRAG_BUFFERED, () => {
-      status.style.opacity = '0';
+    currentHls.on(Hls.Events.FRAG_BUFFERED, () => {
+      status.style.opacity = "0";
     });
 
-    hls.on(Hls.Events.ERROR, () => restartStream());
+    currentHls.on(Hls.Events.ERROR, () => restartStream());
 
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = STREAM_URL;
-    video.play().catch(()=>{});
+    video.src = url;
+    video.addEventListener('loadedmetadata', () => video.play().catch(() => {}), { once: true });
   }
 }
 
 function restartStream() {
-  status.textContent = "Reconnecting…";
-  status.style.opacity = '1';
+  status.textContent = "Reconnecting...";
+  status.style.opacity = "1";
 
   try {
-    if (hls) hls.destroy();
+    if (currentHls) currentHls.destroy();
     video.pause();
     video.removeAttribute("src");
     video.load();
   } catch {}
 
-  setTimeout(startStream, 1500);
+  setTimeout(() => playChannel(channelUrl), 1500);
 }
 
-/* -------------------- Watchdog -------------------- */
+/* ---------- Watchdog ---------- */
+let lastProgress = Date.now();
 video.addEventListener('timeupdate', () => {
   lastProgress = Date.now();
 });
@@ -203,12 +224,24 @@ setInterval(() => {
   }
 }, 5000);
 
-/* -------------------- Periodic reload -------------------- */
-// Hard reload every 6 hours (prevents WebView leaks)
+/* ---------- Burn-in protection ---------- */
+let uiTimer;
+const controls = [playPauseBtn, unmuteBtn, volumeSlider];
+
+function showControls() {
+  controls.forEach(el => el.style.opacity = "1");
+  clearTimeout(uiTimer);
+  uiTimer = setTimeout(() => controls.forEach(el => el.style.opacity = "0"), 10000);
+}
+document.body.addEventListener('click', showControls);
+showControls();
+
+/* ---------- Periodic reload ---------- */
 setTimeout(() => location.reload(), 6 * 60 * 60 * 1000);
 
-/* -------------------- Start -------------------- */
-startStream();
+/* ---------- Start ---------- */
+playChannel(channelUrl);
+setTimeout(() => status.style.opacity = "0", 8000);
 </script>
 </body>
 </html>
