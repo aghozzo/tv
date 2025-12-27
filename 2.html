@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TV Channels • Digital Frame</title>
+  <title>TV • Digital Frame</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -11,118 +11,119 @@
     #video-container { position:relative; width:100%; height:100%; }
     #video { width:100%; height:100%; object-fit:contain; background:#000; }
 
-    /* Play/Pause - bottom left */
-    #play-pause {
+    /* Controls - bottom center area */
+    .controls {
       position: absolute;
-      bottom: 20px;
-      left: 20px;
-      padding: 12px 24px;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 15;
+      background: rgba(0,0,0,0.65);
+      padding: 10px 18px;
+      border-radius: 12px;
+    }
+
+    /* Play/Pause and Unmute - same size */
+    #play-pause,
+    #unmute-btn {
+      padding: 10px 18px;
       font-size: 18px;
       background: rgba(0,0,0,0.7);
       color: white;
       border: none;
       border-radius: 10px;
       cursor: pointer;
-      z-index: 15;
-    }
-    #play-pause:hover { background: rgba(50,50,50,0.9); }
-
-    /* Unmute toggle button - bottom right, half size of play button */
-    #unmute-btn {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      padding: 8px 16px;           /* ≈ half padding of play button */
-      font-size: 16px;             /* smaller than play button's 18px */
-      background: rgba(0,0,0,0.7);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      z-index: 15;
-      min-width: 54px;             /* prevent too much jumping when emoji changes */
+      min-width: 64px;
+      text-align: center;
       transition: background 0.2s;
     }
-    #unmute-btn:hover { background: rgba(0,102,204,0.8); }
-    #unmute-btn.muted { background: rgba(120,0,0,0.6); }
+
+    #play-pause:hover,
+    #unmute-btn:hover {
+      background: rgba(30,30,30,0.9);
+    }
+
+    #unmute-btn.muted {
+      background: rgba(120,0,0,0.65);
+    }
+    #unmute-btn:hover.muted {
+      background: rgba(140,0,0,0.8);
+    }
+
+    /* Volume slider - center bottom */
+    #volume {
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 240px;
+      z-index: 14;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      background: rgba(100,100,100,0.6);
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    #volume::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #0066cc;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(0,102,204,0.7);
+    }
 
     #status {
       position: absolute;
-      bottom: 80px;
+      bottom: 60px;
       left: 50%;
       transform: translateX(-50%);
-      color: #aaa;
-      font-size: 14px;
+      color: #ccc;
+      font-size: 15px;
       background: rgba(0,0,0,0.65);
-      padding: 6px 14px;
-      border-radius: 8px;
+      padding: 8px 16px;
+      border-radius: 10px;
       pointer-events: none;
       z-index: 10;
       transition: opacity 1.2s;
     }
-
-    #buttons {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      background: rgba(0,0,0,0.5);
-      padding: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-      z-index: 20;
-      backdrop-filter: blur(4px);
-    }
-    #buttons button {
-      padding: 6px 12px;
-      font-size: 14px;
-      background: #2a2a2a;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    #buttons button.active { background: #0066cc; }
   </style>
 </head>
 <body>
 <div id="video-container">
   <video id="video" autoplay muted playsinline></video>
 
-  <!-- Control buttons -->
-  <button id="play-pause">Play</button>
-  <button id="unmute-btn">🔇</button>
+  <!-- Controls bar -->
+  <div class="controls">
+    <button id="play-pause">Play</button>
+    <button id="unmute-btn">🔇</button>
+  </div>
+
+  <!-- Volume slider -->
+  <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
 
   <div id="status">Loading channel...</div>
 </div>
-
-<div id="buttons"></div>
 
 <script>
 const video = document.getElementById('video');
 const status = document.getElementById('status');
 const playPauseBtn = document.getElementById('play-pause');
 const unmuteBtn = document.getElementById('unmute-btn');
+const volumeSlider = document.getElementById('volume');
 
 let currentHls = null;
-let currentUrl = null;
 
-const channels = [
-  { name: "RoyaTV360", url: "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8" }
-];
-
-// Create channel buttons
-const buttonsDiv = document.getElementById('buttons');
-channels.forEach((ch, i) => {
-  const btn = document.createElement('button');
-  btn.textContent = ch.name;
-  btn.dataset.url = ch.url;
-  btn.onclick = () => playChannel(ch.url, btn);
-  buttonsDiv.appendChild(btn);
-  if (i === 0) {
-    playChannel(ch.url, btn);
-  }
-});
+// Hardcoded single channel (since we removed channel selector)
+const channelUrl = "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8";
 
 // Play/Pause toggle
 playPauseBtn.onclick = () => {
@@ -135,7 +136,7 @@ playPauseBtn.onclick = () => {
   }
 };
 
-// **Mute / Unmute toggle**
+// Mute / Unmute toggle
 unmuteBtn.onclick = () => {
   video.muted = !video.muted;
   updateUnmuteButton();
@@ -151,32 +152,16 @@ function updateUnmuteButton() {
   }
 }
 
-// Volume (optional – you can remove if not needed)
-const volumeSlider = document.createElement('input');
-volumeSlider.type = 'range';
-volumeSlider.min = 0;
-volumeSlider.max = 1;
-volumeSlider.step = 0.01;
-volumeSlider.value = 0.5;
-volumeSlider.style.position = 'absolute';
-volumeSlider.style.bottom = '90px';
-volumeSlider.style.right = '20px';
-volumeSlider.style.width = '120px';
-volumeSlider.style.zIndex = '15';
-document.getElementById('video-container').appendChild(volumeSlider);
-
+// Volume control
 volumeSlider.oninput = () => {
-  video.volume = volumeSlider.value;
+  video.volume = parseFloat(volumeSlider.value);
   if (video.volume > 0 && video.muted) {
     video.muted = false;
     updateUnmuteButton();
   }
 };
 
-function playChannel(url, clickedBtn) {
-  document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
-  if (clickedBtn) clickedBtn.classList.add('active');
-
+function playChannel(url) {
   status.textContent = "Loading...";
   status.style.opacity = "1";
 
@@ -204,11 +189,16 @@ function playChannel(url, clickedBtn) {
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
-    video.addEventListener('loadedmetadata', () => video.play().catch(() => {}), { once: true });
+    video.addEventListener('loadedmetadata', () => {
+      video.play().catch(() => {});
+    }, { once: true });
   }
 }
 
-// Hide status after some time
+// Auto-start
+playChannel(channelUrl);
+
+// Hide status after delay
 setTimeout(() => {
   status.style.opacity = "0";
 }, 8000);
