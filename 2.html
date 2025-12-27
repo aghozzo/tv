@@ -3,58 +3,43 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TV • Digital Frame</title>
+  <title>TV Channels • Digital Frame</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    html, body {
-      height: 100%;
-      background: #000;
-      overflow: hidden;
-    }
-    #video-container {
-      position: relative;
-      width: 100%;
-      height: 100%;
-    }
-    #video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      background: #000;
-    }
-
-    /* Small native-style mute/unmute button - bottom right */
-    #mute-toggle {
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; background:#000; overflow:hidden; font-family:Arial,Helvetica,sans-serif; }
+    #video-container { position:relative; width:100%; height:100%; }
+    #video { width:100%; height:100%; object-fit:contain; background:#000; }
+   
+    /* Unmute overlay - kept as original */
+    #unmute-overlay {
       position: absolute;
-      bottom: 15px;
-      right: 15px;
-      z-index: 20;
-      width: 44px;
-      height: 44px;
-      background: rgba(0,0,0,0.65);
+      top: 60px;
+      left: 0; right: 0; bottom: 0;
+      background: transparent;
+      z-index: 25;
+      transition: opacity 0.8s;
+      pointer-events: none;
+    }
+    #unmute-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #unmute-btn {
+      pointer-events: auto;
+      position: absolute;
+      bottom: 90px;
+      right: 20px;
+      padding: 12px 24px;
+      font-size: 1.2rem;
+      background: #0066cc;
       color: white;
       border: none;
-      border-radius: 50%;
-      font-size: 20px;
+      border-radius: 10px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0.75;
-      transition: all 0.25s ease;
-      backdrop-filter: blur(4px);
+      box-shadow: 0 3px 12px rgba(0,0,0,0.4);
     }
-
-    #mute-toggle:hover {
-      opacity: 1;
-      background: rgba(0,0,0,0.85);
-      transform: scale(1.08);
-    }
+    #unmute-btn:hover { background: #0077ee; }
 
     #status {
       position: absolute;
@@ -63,46 +48,52 @@
       transform: translateX(-50%);
       color: #aaa;
       font-size: 13px;
-      background: rgba(0,0,0,0.65);
-      padding: 6px 14px;
+      background: rgba(0,0,0,0.6);
+      padding: 6px 12px;
       border-radius: 6px;
       pointer-events: none;
       z-index: 10;
-      transition: opacity 1s;
     }
   </style>
 </head>
 <body>
 <div id="video-container">
   <video id="video" autoplay muted playsinline></video>
-
-  <!-- Small mute/unmute toggle -->
-  <button id="mute-toggle" title="Toggle sound">🔇</button>
-
+  <div id="unmute-overlay">
+    <button id="unmute-btn">🔊 Start Sound</button>
+  </div>
   <div id="status">Loading channel...</div>
 </div>
 
 <script>
 const video = document.getElementById('video');
 const status = document.getElementById('status');
-const muteToggle = document.getElementById('mute-toggle');
+const unmuteOverlay = document.getElementById('unmute-overlay');
+const unmuteBtn = document.getElementById('unmute-btn');
 
 let currentHls = null;
-const CHANNEL_URL = "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8";
+let currentUrl = null;
 
-// Initial state: muted
-video.muted = true;
-muteToggle.textContent = '🔇';
+const channels = [
+  { name: "RoyaTV", url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
+];
 
-// Toggle mute
-muteToggle.onclick = () => {
-  video.muted = !video.muted;
-  muteToggle.textContent = video.muted ? '🔇' : '🔊';
+// Automatically play the only channel (no button selector anymore)
+playChannel(channels[0].url);
+
+unmuteBtn.onclick = () => {
+  video.muted = false;
+  unmuteOverlay.classList.add('hidden');
 };
 
-// Load and play channel automatically
+function showUnmutePrompt() {
+  video.muted = true;
+  unmuteOverlay.classList.remove('hidden');
+}
+
 function playChannel(url) {
   status.textContent = "Loading...";
+  showUnmutePrompt();
 
   if (currentHls) {
     currentHls.destroy();
@@ -116,4 +107,77 @@ function playChannel(url) {
     liveMaxLatencyDurationCount: 12,
     maxBufferLength: 8,
     maxMaxBufferLength: 12,
-    maxBufferSize
+    maxBufferSize: 10 * 1000 * 1000,
+    backBufferLength: 5,
+    maxBufferHole: 0.5,
+    maxStarvationDelay: 2,
+    abrEwmaFastLive: 6.0,
+    abrEwmaSlowLive: 15.0,
+    abrBandWidthFactor: 0.98,
+    abrBandWidthUpFactor: 0.95,
+    abrEwmaDefaultEstimate: 300000,
+    testBandwidth: false,
+    initialLiveManifestSize: 6,
+    enableSoftwareAES: true,
+    appendErrorMaxRetry: 1,
+    fragLoadingTimeOut: 8000,
+    fragLoadingMaxRetry: 2,
+    fragLoadingRetryDelay: 500
+  };
+
+  if (Hls.isSupported()) {
+    currentHls = new Hls(config);
+    currentHls.loadSource(url);
+    currentHls.attachMedia(video);
+    currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play().catch(() => status.textContent = "Tap to play");
+    });
+    currentHls.on(Hls.Events.FRAG_BUFFERED, () => {
+      if (video.buffered.length > 0) {
+        const drift = video.buffered.end(video.buffered.length - 1) - video.currentTime;
+        video.playbackRate = (drift > 9) ? 1.10 : 1.0;
+      }
+    });
+    currentHls.on(Hls.Events.ERROR, (event, data) => {
+      if (data.fatal) status.textContent = "Recovering...";
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = url;
+    video.addEventListener('loadedmetadata', () => {
+      video.play().catch(() => {});
+    }, { once: true });
+  }
+}
+
+// Stop stream when screen off / frame sleeps
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    video.pause();
+    if (currentHls) currentHls.stopLoad();
+    status.textContent = "Paused (screen off)";
+  } else {
+    video.play().catch(() => {});
+    if (currentHls) currentHls.startLoad();
+    status.textContent = "Resuming...";
+    setTimeout(() => status.style.opacity = "0", 3000);
+  }
+});
+
+window.addEventListener('blur', () => {
+  video.pause();
+  if (currentHls) currentHls.stopLoad();
+});
+
+window.addEventListener('focus', () => {
+  video.play().catch(() => {});
+  if (currentHls) currentHls.startLoad();
+});
+
+// Hide initial status
+setTimeout(() => {
+  status.style.opacity = "0";
+  status.style.transition = "opacity 1s";
+}, 10000);
+</script>
+</body>
+</html>
