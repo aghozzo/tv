@@ -10,7 +10,7 @@
     html, body { height:100%; background:#000; overflow:hidden; font-family:Arial,Helvetica,sans-serif; }
     #video-container { position:relative; width:100%; height:100%; }
     #video { width:100%; height:100%; object-fit:contain; background:#000; }
-    
+
     /* Play/Pause - bottom left */
     #play-pause {
       position: absolute;
@@ -27,129 +27,71 @@
     }
     #play-pause:hover { background: rgba(50,50,50,0.9); }
 
-    /* Volume - vertical on right side */
-    /* #volume-container {
+    /* Unmute toggle button - bottom right, half size of play button */
+    #unmute-btn {
       position: absolute;
-      right: 25px;
-      bottom: 50%;
-      transform: translateY(50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      z-index: 15;
-      background: rgba(0,0,0,0.6);
-      padding: 2px 1px;
-      border-radius: 2px;
-    }
-    #volume-label {
+      bottom: 20px;
+      right: 20px;
+      padding: 8px 16px;           /* ≈ half padding of play button */
+      font-size: 16px;             /* smaller than play button's 18px */
+      background: rgba(0,0,0,0.7);
       color: white;
-      font-size: 2px;
-      writing-mode: vertical-rl;
-      text-orientation: mixed;
-    }
-    input[type="range"] {
-      writing-mode: bt-lr; 
-      -webkit-appearance: slider-vertical;
-      width: 8px;
-      height: 200px;
-      background: #444;
-      border-radius: 5px;
-      outline: none;
+      border: none;
+      border-radius: 8px;
       cursor: pointer;
+      z-index: 15;
+      min-width: 54px;             /* prevent too much jumping when emoji changes */
+      transition: background 0.2s;
     }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 20px;
-      height: 20px;
-      background: #0066cc;
-      border-radius: 50%;
-      cursor: pointer;
-    } */
+    #unmute-btn:hover { background: rgba(0,102,204,0.8); }
+    #unmute-btn.muted { background: rgba(120,0,0,0.6); }
+
+    #status {
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #aaa;
+      font-size: 14px;
+      background: rgba(0,0,0,0.65);
+      padding: 6px 14px;
+      border-radius: 8px;
+      pointer-events: none;
+      z-index: 10;
+      transition: opacity 1.2s;
+    }
 
     #buttons {
       position: fixed;
       top: 0; left: 0; right: 0;
-      background: rgba(1,1,1,0.4);
-      padding: 1px;
+      background: rgba(0,0,0,0.5);
+      padding: 8px;
       display: flex;
       flex-wrap: wrap;
-      gap: 1px;
+      gap: 8px;
       justify-content: center;
       z-index: 20;
-      backdrop-filter: blur(1px);
+      backdrop-filter: blur(4px);
     }
     #buttons button {
-      padding: 1px 1px;
-      font-size: 1px;
+      padding: 6px 12px;
+      font-size: 14px;
       background: #2a2a2a;
       color: white;
       border: none;
-      border-radius: 1px;
+      border-radius: 6px;
+      cursor: pointer;
     }
     #buttons button.active { background: #0066cc; }
-
-    #unmute-overlay {
-      position: absolute;
-      top: 4px;
-      left: 0; right: 0; bottom: 0;
-      background: transparent;
-      z-index: 25;
-      transition: opacity 0.8s;
-      pointer-events: none;
-    }
-    /* #unmute-overlay.hidden {
-      opacity: 0;
-      pointer-events: none;
-    } */
-    #unmute-btn {
-      pointer-events: auto;
-      position: absolute;
-      bottom: 90px;
-      right: 20px;
-      padding: 4px 4px;
-      font-size: 0.2rem;
-      background: #0066cc;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.4);
-    }
-    #unmute-btn:hover { background: #0077ee; }
-
-    #status {
-      position: absolute;
-      bottom: 70px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #aaa;
-      font-size: 13px;
-      background: rgba(0,0,0,0.6);
-      padding: 6px 12px;
-      border-radius: 6px;
-      pointer-events: none;
-      z-index: 10;
-    }
   </style>
 </head>
 <body>
-
 <div id="video-container">
   <video id="video" autoplay muted playsinline></video>
 
-  <div id="unmute-overlay">
-    <button id="unmute-btn">🔊 Start</button>
-  </div>
-
-  <!-- Play/Pause button - bottom left -->
+  <!-- Control buttons -->
   <button id="play-pause">Play</button>
-
-  <!-- Volume vertical - right side -->
-  <div id="volume-container">
-    <span id="volume-label">Vol</span>
-    <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5" orient="vertical">
-  </div>
+  <button id="unmute-btn">🔇</button>
 
   <div id="status">Loading channel...</div>
 </div>
@@ -159,10 +101,8 @@
 <script>
 const video = document.getElementById('video');
 const status = document.getElementById('status');
-const unmuteOverlay = document.getElementById('unmute-overlay');
-const unmuteBtn = document.getElementById('unmute-btn');
 const playPauseBtn = document.getElementById('play-pause');
-const volumeSlider = document.getElementById('volume');
+const unmuteBtn = document.getElementById('unmute-btn');
 
 let currentHls = null;
 let currentUrl = null;
@@ -171,35 +111,20 @@ const channels = [
   { name: "RoyaTV360", url: "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8" }
 ];
 
-// Create channel buttons (centered)
+// Create channel buttons
 const buttonsDiv = document.getElementById('buttons');
 channels.forEach((ch, i) => {
   const btn = document.createElement('button');
   btn.textContent = ch.name;
   btn.dataset.url = ch.url;
-  btn.onclick = () => {
-    playChannel(ch.url, btn);
-    currentUrl = ch.url;
-  };
+  btn.onclick = () => playChannel(ch.url, btn);
   buttonsDiv.appendChild(btn);
   if (i === 0) {
     playChannel(ch.url, btn);
-    currentUrl = ch.url;
   }
 });
 
-// Unmute
-unmuteBtn.onclick = () => {
-  video.muted = false;
-  unmuteOverlay.classList.add('hidden');
-};
-
-function showUnmutePrompt() {
-  video.muted = true;
-  unmuteOverlay.classList.remove('hidden');
-}
-
-// Play/Pause
+// Play/Pause toggle
 playPauseBtn.onclick = () => {
   if (video.paused) {
     video.play().catch(() => {});
@@ -210,105 +135,83 @@ playPauseBtn.onclick = () => {
   }
 };
 
-// Volume control
+// **Mute / Unmute toggle**
+unmuteBtn.onclick = () => {
+  video.muted = !video.muted;
+  updateUnmuteButton();
+};
+
+function updateUnmuteButton() {
+  if (video.muted) {
+    unmuteBtn.textContent = '🔇';
+    unmuteBtn.classList.add('muted');
+  } else {
+    unmuteBtn.textContent = '🔊';
+    unmuteBtn.classList.remove('muted');
+  }
+}
+
+// Volume (optional – you can remove if not needed)
+const volumeSlider = document.createElement('input');
+volumeSlider.type = 'range';
+volumeSlider.min = 0;
+volumeSlider.max = 1;
+volumeSlider.step = 0.01;
+volumeSlider.value = 0.5;
+volumeSlider.style.position = 'absolute';
+volumeSlider.style.bottom = '90px';
+volumeSlider.style.right = '20px';
+volumeSlider.style.width = '120px';
+volumeSlider.style.zIndex = '15';
+document.getElementById('video-container').appendChild(volumeSlider);
+
 volumeSlider.oninput = () => {
   video.volume = volumeSlider.value;
+  if (video.volume > 0 && video.muted) {
+    video.muted = false;
+    updateUnmuteButton();
+  }
 };
-volumeSlider.value = 0.5;  // initial volume
 
 function playChannel(url, clickedBtn) {
   document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
   if (clickedBtn) clickedBtn.classList.add('active');
 
   status.textContent = "Loading...";
-  showUnmutePrompt();
+  status.style.opacity = "1";
 
   if (currentHls) {
     currentHls.destroy();
     currentHls = null;
   }
 
-  const config = {
-    enableWorker: true,
-    lowLatencyMode: false,
-    liveSyncDurationCount: 6,
-    liveMaxLatencyDurationCount: 12,
-    maxBufferLength: 8,
-    maxMaxBufferLength: 12,
-    maxBufferSize: 10 * 1000 * 1000,
-    backBufferLength: 5,
-    maxBufferHole: 0.5,
-    maxStarvationDelay: 2,
-    abrEwmaFastLive: 6.0,
-    abrEwmaSlowLive: 15.0,
-    abrBandWidthFactor: 0.98,
-    abrBandWidthUpFactor: 0.95,
-    abrEwmaDefaultEstimate: 300000,
-    testBandwidth: false,
-    initialLiveManifestSize: 6,
-    enableSoftwareAES: true,
-    appendErrorMaxRetry: 1,
-    fragLoadingTimeOut: 8000,
-    fragLoadingMaxRetry: 2,
-    fragLoadingRetryDelay: 500
-  };
+  video.muted = true;
+  updateUnmuteButton();
 
   if (Hls.isSupported()) {
-    currentHls = new Hls(config);
+    currentHls = new Hls();
     currentHls.loadSource(url);
     currentHls.attachMedia(video);
 
     currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(() => status.textContent = "Tap to play");
+      video.play().catch(() => {
+        status.textContent = "Tap to play";
+      });
     });
 
     currentHls.on(Hls.Events.FRAG_BUFFERED, () => {
-      if (video.buffered.length > 0) {
-        const drift = video.buffered.end(video.buffered.length - 1) - video.currentTime;
-        video.playbackRate = (drift > 9) ? 1.10 : 1.0;
-      }
-    });
-
-    currentHls.on(Hls.Events.ERROR, (event, data) => {
-      if (data.fatal) status.textContent = "Recovering...";
+      status.style.opacity = "0";
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
-    video.addEventListener('loadedmetadata', () => {
-      video.play().catch(() => {});
-    }, { once: true });
+    video.addEventListener('loadedmetadata', () => video.play().catch(() => {}), { once: true });
   }
 }
 
-// Stop stream when screen off / frame sleeps
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    video.pause();
-    if (currentHls) currentHls.stopLoad();
-    status.textContent = "Paused (screen off)";
-  } else {
-    video.play().catch(() => {});
-    if (currentHls) currentHls.startLoad();
-    status.textContent = "Resuming...";
-    setTimeout(() => status.style.opacity = "0", 3000);
-  }
-});
-
-window.addEventListener('blur', () => {
-  video.pause();
-  if (currentHls) currentHls.stopLoad();
-});
-
-window.addEventListener('focus', () => {
-  video.play().catch(() => {});
-  if (currentHls) currentHls.startLoad();
-});
-
-// Hide initial status
-setTimeout(() => { 
-  status.style.opacity = "0"; 
-  status.style.transition = "opacity 1s"; 
-}, 10000);
+// Hide status after some time
+setTimeout(() => {
+  status.style.opacity = "0";
+}, 8000);
 </script>
 </body>
 </html>
