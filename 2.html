@@ -11,31 +11,31 @@
     #video-container { position:relative; width:100%; height:100%; }
     #video { width:100%; height:100%; object-fit:contain; background:#000; }
 
-    /* Controls container - very bottom center */
+    /* Controls container - centered just above volume bar */
     .controls {
       position: absolute;
-      bottom: 8px;                  /* very close to bottom edge */
+      bottom: 44px;                /* space for volume bar below */
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       z-index: 15;
       background: rgba(0,0,0,0.55);
-      padding: 6px 12px;
-      border-radius: 10px;
+      padding: 4px 10px;
+      border-radius: 8px;
     }
 
-    /* Smaller buttons - approx. half size of previous version */
+    /* Buttons - ~40% smaller than previous version */
     #play-pause,
     #unmute-btn {
-      padding: 6px 12px;           /* reduced padding */
-      font-size: 16px;             /* smaller text/emoji */
-      min-width: 48px;
+      padding: 4px 10px;           /* much smaller padding */
+      font-size: 14px;             /* smaller text/emoji */
+      min-width: 40px;
       background: rgba(0,0,0,0.75);
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       cursor: pointer;
       transition: background 0.2s;
       text-align: center;
@@ -53,18 +53,18 @@
       background: rgba(130,0,0,0.85);
     }
 
-    /* Volume slider - just above the buttons */
+    /* Volume slider - now at the very bottom, below buttons */
     #volume {
       position: absolute;
-      bottom: 58px;                /* positioned above the controls bar */
+      bottom: 8px;
       left: 50%;
       transform: translateX(-50%);
-      width: 220px;
+      width: 200px;
       z-index: 14;
       -webkit-appearance: none;
       appearance: none;
       height: 5px;
-      background: rgba(90,90,90,0.6);
+      background: rgba(90,90,90,0.65);
       border-radius: 3px;
       outline: none;
       cursor: pointer;
@@ -73,23 +73,23 @@
     #volume::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       background: #0066cc;
       border-radius: 50%;
       cursor: pointer;
-      box-shadow: 0 0 5px rgba(0,102,204,0.8);
+      box-shadow: 0 0 4px rgba(0,102,204,0.8);
     }
 
     #status {
       position: absolute;
-      bottom: 90px;
+      bottom: 80px;
       left: 50%;
       transform: translateX(-50%);
       color: #ccc;
-      font-size: 14px;
+      font-size: 13px;
       background: rgba(0,0,0,0.6);
-      padding: 6px 14px;
+      padding: 5px 12px;
       border-radius: 8px;
       pointer-events: none;
       z-index: 10;
@@ -101,13 +101,13 @@
 <div id="video-container">
   <video id="video" autoplay muted playsinline></video>
 
-  <!-- Very bottom centered small controls -->
+  <!-- Buttons -->
   <div class="controls">
     <button id="play-pause">Play</button>
     <button id="unmute-btn">🔇</button>
   </div>
 
-  <!-- Volume slider above buttons -->
+  <!-- Volume slider BELOW the buttons -->
   <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
 
   <div id="status">Loading channel...</div>
