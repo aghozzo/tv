@@ -5,86 +5,86 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TV • Digital Frame</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    html, body { height:100%; background:#000; overflow:hidden; font-family:Arial,Helvetica,sans-serif; }
-    #video-container { position:relative; width:100%; height:100%; }
-    #video { width:100%; height:100%; object-fit:contain; background:#000; }
 
-    #play-pause {
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    #video-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+
+    /* Controls */
+    #play-pause,
+    #unmute-btn,
+    #volume {
       position: absolute;
       bottom: 6px;
+      background: rgba(0,0,0,0.65);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.25s, opacity 0.6s;
+      opacity: 1;
+      will-change: opacity;
+      z-index: 5;
+    }
+
+    #play-pause {
       left: 10px;
       padding: 6px 14px;
       font-size: 15px;
       min-width: 60px;
-      background: rgba(0,0,0,0.65);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      z-index: 15;
-      transition: background 0.2s, opacity 0.6s;
-    }
-
-    #play-pause:hover {
-      background: rgba(40,40,40,0.9);
     }
 
     #unmute-btn {
-      position: absolute;
-      bottom: 6px;
       right: 10px;
       padding: 6px 12px;
       font-size: 15px;
       min-width: 48px;
-      background: rgba(0,0,0,0.65);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      z-index: 15;
-      transition: background 0.2s, opacity 0.6s;
       text-align: center;
-    }
-
-    #unmute-btn:hover {
-      background: rgba(40,40,40,0.9);
     }
 
     #unmute-btn.muted {
       background: rgba(100,0,0,0.65);
     }
-    #unmute-btn:hover.muted {
-      background: rgba(130,0,0,0.85);
-    }
 
     #volume {
-      position: absolute;
-      bottom: 6px;
       left: 50%;
       transform: translateX(-50%);
       width: 260px;
-      z-index: 14;
-      -webkit-appearance: none;
-      appearance: none;
       height: 5px;
+      appearance: none;
+      -webkit-appearance: none;
       background: rgba(90,90,90,0.65);
       border-radius: 3px;
       outline: none;
-      cursor: pointer;
-      transition: opacity 0.6s;
     }
 
     #volume::-webkit-slider-thumb {
-      -webkit-appearance: none;
       appearance: none;
+      -webkit-appearance: none;
       width: 18px;
       height: 18px;
       background: #0066cc;
       border-radius: 50%;
       cursor: pointer;
-      box-shadow: 0 0 5px rgba(0,102,204,0.7);
     }
 
     #status {
@@ -98,23 +98,27 @@
       padding: 6px 14px;
       border-radius: 8px;
       pointer-events: none;
-      z-index: 10;
+      z-index: 4;
       transition: opacity 1.2s;
     }
   </style>
 </head>
+
 <body>
 <div id="video-container">
   <video id="video" autoplay muted playsinline></video>
-
   <button id="play-pause">Play</button>
   <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
   <button id="unmute-btn">🔇</button>
-
   <div id="status">Loading channel...</div>
 </div>
 
 <script>
+/* ───────────────────────────────────────────────
+   Constants & State
+─────────────────────────────────────────────── */
+const CHANNEL_URL = "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8";
+
 const video = document.getElementById('video');
 const status = document.getElementById('status');
 const playPauseBtn = document.getElementById('play-pause');
@@ -122,9 +126,12 @@ const unmuteBtn = document.getElementById('unmute-btn');
 const volumeSlider = document.getElementById('volume');
 
 let currentHls = null;
-const channelUrl = "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8";
+let lastProgress = Date.now();
+let restarting = false;
 
-/* ---------- Play / Pause ---------- */
+/* ───────────────────────────────────────────────
+   UI Controls
+─────────────────────────────────────────────── */
 playPauseBtn.onclick = () => {
   if (video.paused) {
     video.play().catch(() => {});
@@ -135,13 +142,20 @@ playPauseBtn.onclick = () => {
   }
 };
 
-/* ---------- Mute ---------- */
 unmuteBtn.onclick = () => {
   video.muted = !video.muted;
-  updateUnmuteButton();
+  updateMuteUI();
 };
 
-function updateUnmuteButton() {
+volumeSlider.oninput = () => {
+  video.volume = parseFloat(volumeSlider.value);
+  if (video.volume > 0 && video.muted) {
+    video.muted = false;
+  }
+  updateMuteUI();
+};
+
+function updateMuteUI() {
   if (video.muted) {
     unmuteBtn.textContent = '🔇';
     unmuteBtn.classList.add('muted');
@@ -151,71 +165,107 @@ function updateUnmuteButton() {
   }
 }
 
-/* ---------- Volume ---------- */
-volumeSlider.oninput = () => {
-  video.volume = parseFloat(volumeSlider.value);
-  if (video.volume > 0 && video.muted) {
-    video.muted = false;
-    updateUnmuteButton();
-  }
-};
+/* ───────────────────────────────────────────────
+   HLS Setup
+─────────────────────────────────────────────── */
+function createHls() {
+  return new Hls({
+    enableWorker: true,
+    lowLatencyMode: false,
+    backBufferLength: 2,              // decoder safety
+    maxBufferLength: 12,
+    maxMaxBufferLength: 20,
+    maxBufferSize: 15 * 1000 * 1000,
+    liveSyncDurationCount: 3,
+    liveMaxLatencyDurationCount: 5,
+    fragLoadingTimeOut: 6000,
+    fragLoadingMaxRetry: 3,
+    fragLoadingRetryDelay: 1000,
+    maxFragLookUpTolerance: 0.2
+  });
+}
 
-/* ---------- Stream ---------- */
+/* ───────────────────────────────────────────────
+   Stream Control
+─────────────────────────────────────────────── */
 function playChannel(url) {
   status.textContent = "Loading...";
   status.style.opacity = "1";
 
-  if (currentHls) currentHls.destroy();
+  if (currentHls) {
+    currentHls.destroy();
+    currentHls = null;
+  }
 
+  video.pause();
   video.muted = true;
-  updateUnmuteButton();
+  updateMuteUI();
 
   if (Hls.isSupported()) {
-    currentHls = new Hls({
-      maxBufferLength: 20,
-      maxMaxBufferLength: 30,
-      backBufferLength: 0,
-      liveSyncDuration: 10,
-      lowLatencyMode: false
-    });
-
+    currentHls = createHls();
     currentHls.loadSource(url);
     currentHls.attachMedia(video);
 
     currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(() => status.textContent = "Tap to play");
+      video.play().catch(() => {});
     });
 
     currentHls.on(Hls.Events.FRAG_BUFFERED, () => {
       status.style.opacity = "0";
     });
 
-    currentHls.on(Hls.Events.ERROR, () => restartStream());
+    currentHls.on(Hls.Events.ERROR, (_, data) => {
+      if (!data.fatal) return;
 
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+        currentHls.startLoad();
+      } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+        currentHls.recoverMediaError();
+      } else {
+        restartStream();
+      }
+    });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
-    video.addEventListener('loadedmetadata', () => video.play().catch(() => {}), { once: true });
+    video.addEventListener('loadedmetadata', () => {
+      video.play().catch(() => {});
+    }, { once: true });
   }
 }
 
 function restartStream() {
+  if (restarting) return;
+  restarting = true;
+
   status.textContent = "Reconnecting...";
   status.style.opacity = "1";
 
-  try {
-    if (currentHls) currentHls.destroy();
-    video.pause();
-    video.removeAttribute("src");
-    video.load();
-  } catch {}
+  if (currentHls) {
+    currentHls.destroy();
+    currentHls = null;
+  }
 
-  setTimeout(() => playChannel(channelUrl), 1500);
+  video.pause();
+  video.removeAttribute("src");
+  video.load();
+
+  setTimeout(() => {
+    restarting = false;
+    playChannel(CHANNEL_URL);
+  }, 1500);
 }
 
-/* ---------- Watchdog ---------- */
-let lastProgress = Date.now();
+/* ───────────────────────────────────────────────
+   Freeze Watchdog
+─────────────────────────────────────────────── */
 video.addEventListener('timeupdate', () => {
   lastProgress = Date.now();
+});
+
+video.addEventListener('stalled', restartStream);
+video.addEventListener('waiting', () => {
+  status.textContent = "Buffering…";
+  status.style.opacity = "1";
 });
 
 setInterval(() => {
@@ -224,23 +274,48 @@ setInterval(() => {
   }
 }, 5000);
 
-/* ---------- Burn-in protection ---------- */
-let uiTimer;
+/* ───────────────────────────────────────────────
+   Burn-in Protection (auto-hide controls)
+─────────────────────────────────────────────── */
 const controls = [playPauseBtn, unmuteBtn, volumeSlider];
+let hideTimer;
 
 function showControls() {
   controls.forEach(el => el.style.opacity = "1");
-  clearTimeout(uiTimer);
-  uiTimer = setTimeout(() => controls.forEach(el => el.style.opacity = "0"), 10000);
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => {
+    controls.forEach(el => el.style.opacity = "0");
+  }, 10000);
 }
+
 document.body.addEventListener('click', showControls);
+document.body.addEventListener('touchstart', showControls, { passive: true });
 showControls();
 
-/* ---------- Periodic reload ---------- */
-setTimeout(() => location.reload(), 6 * 60 * 60 * 1000);
+/* ───────────────────────────────────────────────
+   Visibility Handling (HA iframe safe)
+─────────────────────────────────────────────── */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    currentHls?.stopLoad();
+    video.pause();
+  } else {
+    currentHls?.startLoad();
+    video.play().catch(() => {});
+  }
+});
 
-/* ---------- Start ---------- */
-playChannel(channelUrl);
+/* ───────────────────────────────────────────────
+   Periodic Hard Refresh (leak insurance)
+─────────────────────────────────────────────── */
+setTimeout(() => {
+  location.reload();
+}, 6 * 60 * 60 * 1000);
+
+/* ───────────────────────────────────────────────
+   Start
+─────────────────────────────────────────────── */
+playChannel(CHANNEL_URL);
 setTimeout(() => status.style.opacity = "0", 8000);
 </script>
 </body>
