@@ -11,26 +11,23 @@
     #video-container { position:relative; width:100%; height:100%; }
     #video { width:100%; height:100%; object-fit:contain; background:#000; }
 
-    /* Controls container - centered just above volume bar */
-    .controls {
+    /* Bottom controls container - very bottom, centered */
+    .bottom-controls {
       position: absolute;
-      bottom: 44px;                /* space for volume bar below */
+      bottom: 8px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 16px;
       z-index: 15;
-      background: rgba(0,0,0,0.55);
-      padding: 4px 10px;
-      border-radius: 8px;
     }
 
-    /* Buttons - ~40% smaller than previous version */
+    /* Small buttons - same size as before */
     #play-pause,
     #unmute-btn {
-      padding: 4px 10px;           /* much smaller padding */
-      font-size: 14px;             /* smaller text/emoji */
+      padding: 4px 10px;
+      font-size: 14px;
       min-width: 40px;
       background: rgba(0,0,0,0.75);
       color: white;
@@ -53,13 +50,13 @@
       background: rgba(130,0,0,0.85);
     }
 
-    /* Volume slider - now at the very bottom, below buttons */
+    /* Volume slider - centered at the very bottom */
     #volume {
       position: absolute;
       bottom: 8px;
       left: 50%;
       transform: translateX(-50%);
-      width: 200px;
+      width: 240px;
       z-index: 14;
       -webkit-appearance: none;
       appearance: none;
@@ -83,7 +80,7 @@
 
     #status {
       position: absolute;
-      bottom: 80px;
+      bottom: 70px;
       left: 50%;
       transform: translateX(-50%);
       color: #ccc;
@@ -101,14 +98,12 @@
 <div id="video-container">
   <video id="video" autoplay muted playsinline></video>
 
-  <!-- Buttons -->
-  <div class="controls">
+  <!-- Bottom row: Play ← Volume → Mute -->
+  <div class="bottom-controls">
     <button id="play-pause">Play</button>
+    <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
     <button id="unmute-btn">🔇</button>
   </div>
-
-  <!-- Volume slider BELOW the buttons -->
-  <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
 
   <div id="status">Loading channel...</div>
 </div>
