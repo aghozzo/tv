@@ -11,52 +11,63 @@
     #video-container { position:relative; width:100%; height:100%; }
     #video { width:100%; height:100%; object-fit:contain; background:#000; }
 
-    /* Bottom controls container - very bottom, centered */
-    .bottom-controls {
+    /* Play button - bottom left corner */
+    #play-pause {
       position: absolute;
-      bottom: 8px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      z-index: 15;
-    }
-
-    /* Small buttons - same size as before */
-    #play-pause,
-    #unmute-btn {
-      padding: 4px 10px;
-      font-size: 14px;
-      min-width: 40px;
-      background: rgba(0,0,0,0.75);
+      bottom: 6px;
+      left: 10px;
+      padding: 6px 14px;
+      font-size: 15px;
+      min-width: 60px;
+      background: rgba(0,0,0,0.65);
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
+      z-index: 15;
+      transition: background 0.2s;
+    }
+
+    #play-pause:hover {
+      background: rgba(40,40,40,0.9);
+    }
+
+    /* Mute button - bottom right corner */
+    #unmute-btn {
+      position: absolute;
+      bottom: 6px;
+      right: 10px;
+      padding: 6px 12px;
+      font-size: 15px;
+      min-width: 48px;
+      background: rgba(0,0,0,0.65);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      z-index: 15;
       transition: background 0.2s;
       text-align: center;
     }
 
-    #play-pause:hover,
     #unmute-btn:hover {
       background: rgba(40,40,40,0.9);
     }
 
     #unmute-btn.muted {
-      background: rgba(100,0,0,0.7);
+      background: rgba(100,0,0,0.65);
     }
     #unmute-btn:hover.muted {
       background: rgba(130,0,0,0.85);
     }
 
-    /* Volume slider - centered at the very bottom */
+    /* Volume slider - center bottom, same height level as buttons */
     #volume {
       position: absolute;
-      bottom: 8px;
+      bottom: 6px;
       left: 50%;
       transform: translateX(-50%);
-      width: 240px;
+      width: 260px;
       z-index: 14;
       -webkit-appearance: none;
       appearance: none;
@@ -70,12 +81,12 @@
     #volume::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       background: #0066cc;
       border-radius: 50%;
       cursor: pointer;
-      box-shadow: 0 0 4px rgba(0,102,204,0.8);
+      box-shadow: 0 0 5px rgba(0,102,204,0.7);
     }
 
     #status {
@@ -86,7 +97,7 @@
       color: #ccc;
       font-size: 13px;
       background: rgba(0,0,0,0.6);
-      padding: 5px 12px;
+      padding: 6px 14px;
       border-radius: 8px;
       pointer-events: none;
       z-index: 10;
@@ -98,12 +109,10 @@
 <div id="video-container">
   <video id="video" autoplay muted playsinline></video>
 
-  <!-- Bottom row: Play ← Volume → Mute -->
-  <div class="bottom-controls">
-    <button id="play-pause">Play</button>
-    <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
-    <button id="unmute-btn">🔇</button>
-  </div>
+  <!-- Controls at the very bottom edge -->
+  <button id="play-pause">Play</button>
+  <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
+  <button id="unmute-btn">🔇</button>
 
   <div id="status">Loading channel...</div>
 </div>
@@ -118,7 +127,7 @@ const volumeSlider = document.getElementById('volume');
 let currentHls = null;
 const channelUrl = "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8";
 
-// Play/Pause
+// Play/Pause toggle
 playPauseBtn.onclick = () => {
   if (video.paused) {
     video.play().catch(() => {});
@@ -129,7 +138,7 @@ playPauseBtn.onclick = () => {
   }
 };
 
-// Mute/Unmute
+// Mute/Unmute toggle
 unmuteBtn.onclick = () => {
   video.muted = !video.muted;
   updateUnmuteButton();
@@ -145,7 +154,7 @@ function updateUnmuteButton() {
   }
 }
 
-// Volume
+// Volume control
 volumeSlider.oninput = () => {
   video.volume = parseFloat(volumeSlider.value);
   if (video.volume > 0 && video.muted) {
