@@ -8,14 +8,30 @@
 
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    html, body { height:100%; background:#000; overflow:hidden; font-family:Arial,Helvetica,sans-serif; }
-    #video-container { position:relative; width:100%; height:100%; }
-    #video { width:100%; height:100%; object-fit:contain; background:#000; }
+    html, body {
+      height:100%;
+      background:#000;
+      overflow:hidden;
+      font-family:Arial,Helvetica,sans-serif;
+    }
 
-    /* Controls (same style as previous HTML) */
+    #video-container {
+      position:relative;
+      width:100%;
+      height:100%;
+    }
+
+    #video {
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      background:#000;
+    }
+
+    /* === CONTROLS === */
     .ctrl {
       position:absolute;
-      bottom:6px;
+      bottom:8px;
       padding:6px 14px;
       font-size:15px;
       background:rgba(0,0,0,0.65);
@@ -28,21 +44,24 @@
     }
     .ctrl:hover { background:rgba(40,40,40,0.9); }
 
+    /* Play = left of center */
     #play-pause {
-      left:100%;
-      transform:translateX(-90px); /* move left from center */
-      min-width:120px;
-    }
-    
-    #unmute-btn {
-      left:100%;
-      transform:translateX(90px); /* move right from center */
-      min-width:0px;
+      left:50%;
+      transform:translateX(-220px);
+      min-width:64px;
     }
 
+    /* Mute = right of center */
+    #unmute-btn {
+      left:50%;
+      transform:translateX(160px);
+      min-width:48px;
+    }
+
+    /* Volume centered */
     #volume {
       position:absolute;
-      bottom:9px;
+      bottom:11px;
       left:50%;
       transform:translateX(-50%);
       width:260px;
@@ -56,16 +75,18 @@
       cursor:pointer;
       transition:opacity .6s;
     }
+
     #volume::-webkit-slider-thumb {
       -webkit-appearance:none;
       width:18px;
       height:18px;
       background:#0066cc;
       border-radius:50%;
-      cursor:pointer;
       box-shadow:0 0 5px rgba(0,102,204,0.7);
+      cursor:pointer;
     }
 
+    /* Channel buttons */
     #buttons {
       position:fixed;
       top:0; left:0; right:0;
@@ -78,6 +99,7 @@
       z-index:20;
       backdrop-filter:blur(4px);
     }
+
     #buttons button {
       padding:8px 16px;
       font-size:15px;
@@ -132,14 +154,13 @@ let lastProgress = Date.now();
 
 /* Channels */
 const channels = [
-  { name: "RoyaTV",    url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
-  { name: "Jordan",   url: "https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
-  { name: "Mamlaka",  url: "https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
-  { name: "Amman",    url: "https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
-  { name: "Jazeera",  url: "https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
-  { name: "Arabiya",  url: "https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
-  { name: "JorSongs", url: "https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" },
-  { name: "Roya360",  url: "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8" }
+  { name:"RoyaTV", url:"https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
+  { name:"Jordan", url:"https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
+  { name:"Mamlaka", url:"https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
+  { name:"Amman", url:"https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
+  { name:"Jazeera", url:"https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
+  { name:"Arabiya", url:"https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
+  { name:"JorSongs", url:"https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" }
 ];
 
 /* Channel buttons */
@@ -152,7 +173,7 @@ channels.forEach((ch, i) => {
   if (i === 0) playChannel(ch.url, btn);
 });
 
-/* UI */
+/* UI logic */
 playPauseBtn.onclick = () => {
   if (video.paused) {
     video.play().catch(()=>{});
@@ -176,7 +197,7 @@ volumeSlider.oninput = () => {
   }
 };
 
-/* Stream */
+/* Stream handling */
 function playChannel(url, btn) {
   document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -191,11 +212,10 @@ function playChannel(url, btn) {
   unmuteBtn.textContent = '🔇';
 
   const config = {
-    lowLatencyMode: false,
-    maxBufferLength: 20,
-    maxMaxBufferLength: 30,
-    backBufferLength: 0,
-    liveSyncDuration: 10
+    lowLatencyMode:false,
+    maxBufferLength:20,
+    backBufferLength:0,
+    liveSyncDuration:10
   };
 
   if (Hls.isSupported()) {
@@ -212,7 +232,7 @@ function playChannel(url, btn) {
   }
 }
 
-/* Watchdog */
+/* Watchdog – ONLY reconnect if frozen */
 video.addEventListener('timeupdate', () => lastProgress = Date.now());
 setInterval(() => {
   if (Date.now() - lastProgress > 20000) restartStream();
@@ -221,16 +241,14 @@ setInterval(() => {
 function restartStream() {
   status.textContent = "Reconnecting...";
   status.style.opacity = "1";
-  try {
-    if (currentHls) currentHls.destroy();
-    video.pause();
-    video.removeAttribute("src");
-    video.load();
-  } catch {}
+  if (currentHls) currentHls.destroy();
+  video.pause();
+  video.removeAttribute("src");
+  video.load();
   setTimeout(() => playChannel(currentUrl), 1500);
 }
 
-/* Burn-in protection */
+/* Auto-hide controls */
 let uiTimer;
 function showControls() {
   controls.forEach(c => c.style.opacity = "1");
@@ -239,20 +257,6 @@ function showControls() {
 }
 document.body.addEventListener('click', showControls);
 showControls();
-
-/* Visibility handling */
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    video.pause();
-    if (currentHls) currentHls.stopLoad();
-  } else {
-    video.play().catch(()=>{});
-    if (currentHls) currentHls.startLoad();
-  }
-});
-
-/* Periodic reload (critical for WebView stability) */
-setTimeout(() => location.reload(), 6 * 60 * 60 * 1000);
 </script>
 </body>
 </html>
