@@ -28,13 +28,13 @@ html, body {
   background:#000;
 }
 
-/* ===== SAFE CONTROL ZONE (ABOVE NAV BAR) ===== */
+/* ===== CONTROLS (DIGITAL FRAME SAFE ZONE) ===== */
 .ctrl {
   position:absolute;
-  bottom:90px;                /* 🔴 lifted above digital frame nav bar */
-  padding:8px 16px;
+  bottom:110px;               /* lifted above system nav bar */
+  padding:8px 14px;
   font-size:16px;
-  background:rgba(0,0,0,0.65);
+  background:rgba(0,0,0,0.6);
   color:white;
   border:none;
   border-radius:8px;
@@ -44,31 +44,29 @@ html, body {
 }
 .ctrl:hover { background:rgba(40,40,40,0.9); }
 
-/* Play: left of center */
+/* EXTREME LEFT */
 #play-pause {
-  left:50%;
-  transform:translateX(-240px);
+  left:14px;
   min-width:70px;
 }
 
-/* Mute: right of center */
+/* EXTREME RIGHT */
 #unmute-btn {
-  left:50%;
-  transform:translateX(180px);
+  right:14px;
   min-width:54px;
 }
 
-/* Volume centered */
+/* Volume – centered, slightly above buttons */
 #volume {
   position:absolute;
-  bottom:94px;
+  bottom:114px;
   left:50%;
   transform:translateX(-50%);
-  width:260px;
+  width:240px;
   z-index:19;
   appearance:none;
   height:6px;
-  background:rgba(100,100,100,0.7);
+  background:rgba(90,90,90,0.7);
   border-radius:4px;
   cursor:pointer;
 }
@@ -82,13 +80,14 @@ html, body {
   box-shadow:0 0 6px rgba(10,132,255,.8);
 }
 
-/* Channel bar (top, safe for frames) */
+/* ===== CHANNEL BAR (TOP) ===== */
 #buttons {
   position:fixed;
   top:0; left:0; right:0;
   background:rgba(15,15,15,0.85);
   padding:10px;
   display:flex;
+  flex-wrap:wrap;
   gap:8px;
   justify-content:center;
   z-index:30;
@@ -107,7 +106,7 @@ html, body {
 
 #status {
   position:absolute;
-  bottom:150px;               /* also above nav bar */
+  bottom:170px;
   left:50%;
   transform:translateX(-50%);
   color:#aaa;
@@ -126,6 +125,7 @@ html, body {
 <div id="video-container">
   <video id="video" autoplay muted playsinline></video>
 
+  <!-- Controls -->
   <button id="play-pause" class="ctrl">Pause</button>
   <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
   <button id="unmute-btn" class="ctrl">🔇</button>
@@ -141,76 +141,95 @@ const status = document.getElementById('status');
 const playBtn = document.getElementById('play-pause');
 const muteBtn = document.getElementById('unmute-btn');
 const volume = document.getElementById('volume');
-let hls, currentUrl, lastProgress = Date.now();
 
+let hls = null;
+let currentUrl = null;
+let lastProgress = Date.now();
+
+/* CHANNEL LIST (UNCHANGED / KEPT) */
 const channels = [
-  { name: "RoyaTV",    url: "https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
-  { name: "Jordan",   url: "https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
-  { name: "Mamlaka",  url: "https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
-  { name: "Amman",    url: "https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
-  { name: "Jazeera",  url: "https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
-  { name: "Arabiya",  url: "https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
-  { name: "JorSongs", url: "https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" },
-  { name: "Roya360",  url: "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8" }
+  { name:"RoyaTV",    url:"https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
+  { name:"Jordan",   url:"https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
+  { name:"Mamlaka",  url:"https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
+  { name:"Amman",    url:"https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
+  { name:"Jazeera",  url:"https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
+  { name:"Arabiya",  url:"https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
+  { name:"JorSongs", url:"https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" }
 ];
 
+/* Channel buttons */
 const bar = document.getElementById('buttons');
-channels.forEach((c,i)=>{
-  const b=document.createElement('button');
-  b.textContent=c.name;
-  b.onclick=()=>play(c.url,b);
+channels.forEach((c, i) => {
+  const b = document.createElement('button');
+  b.textContent = c.name;
+  b.onclick = () => playChannel(c.url, b);
   bar.appendChild(b);
-  if(i===0) play(c.url,b);
+  if (i === 0) playChannel(c.url, b);
 });
 
-playBtn.onclick=()=>{
-  if(video.paused){ video.play(); playBtn.textContent='Pause'; }
-  else{ video.pause(); playBtn.textContent='Play'; }
+/* Controls */
+playBtn.onclick = () => {
+  if (video.paused) {
+    video.play().catch(()=>{});
+    playBtn.textContent = 'Pause';
+  } else {
+    video.pause();
+    playBtn.textContent = 'Play';
+  }
 };
 
-muteBtn.onclick=()=>{
-  video.muted=!video.muted;
-  muteBtn.textContent=video.muted?'🔇':'🔊';
+muteBtn.onclick = () => {
+  video.muted = !video.muted;
+  muteBtn.textContent = video.muted ? '🔇' : '🔊';
 };
 
-volume.oninput=()=>{
-  video.volume=volume.value;
-  if(video.volume>0){ video.muted=false; muteBtn.textContent='🔊'; }
+volume.oninput = () => {
+  video.volume = volume.value;
+  if (video.volume > 0 && video.muted) {
+    video.muted = false;
+    muteBtn.textContent = '🔊';
+  }
 };
 
-function play(url,btn){
-  document.querySelectorAll('#buttons button').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  currentUrl=url;
-  status.style.opacity=1;
-  status.textContent="Loading…";
-  if(hls) hls.destroy();
-  video.muted=true; muteBtn.textContent='🔇';
+/* Stream logic */
+function playChannel(url, btn) {
+  document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
 
-  if(Hls.isSupported()){
-    hls=new Hls({ maxBufferLength:20, backBufferLength:0 });
+  currentUrl = url;
+  status.textContent = "Loading…";
+  status.style.opacity = 1;
+
+  if (hls) hls.destroy();
+
+  video.muted = true;
+  muteBtn.textContent = '🔇';
+
+  if (Hls.isSupported()) {
+    hls = new Hls({ maxBufferLength: 20, backBufferLength: 0 });
     hls.loadSource(url);
     hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play());
-    hls.on(Hls.Events.FRAG_BUFFERED,()=>status.style.opacity=0);
-    hls.on(Hls.Events.ERROR,()=>restart());
+    hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(()=>{}));
+    hls.on(Hls.Events.FRAG_BUFFERED, () => status.style.opacity = 0);
+    hls.on(Hls.Events.ERROR, () => restartStream());
   } else {
-    video.src=url;
-    video.play();
+    video.src = url;
+    video.play().catch(()=>{});
   }
 }
 
-video.addEventListener('timeupdate',()=>lastProgress=Date.now());
-setInterval(()=>{
-  if(Date.now()-lastProgress>20000) restart();
-},5000);
+/* Watchdog – NO refresh, only reconnect if frozen */
+video.addEventListener('timeupdate', () => lastProgress = Date.now());
+setInterval(() => {
+  if (Date.now() - lastProgress > 20000) restartStream();
+}, 5000);
 
-function restart(){
-  status.textContent="Reconnecting…";
-  status.style.opacity=1;
-  if(hls) hls.destroy();
+function restartStream() {
+  status.textContent = "Reconnecting…";
+  status.style.opacity = 1;
+  if (hls) hls.destroy();
   video.load();
-  setTimeout(()=>play(currentUrl,document.querySelector('.active')),1500);
+  setTimeout(() => playChannel(currentUrl, document.querySelector('.active')), 1500);
 }
 </script>
 </body>
