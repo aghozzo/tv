@@ -1,133 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TV Channels • Digital Frame</title>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TV Channels • Digital Frame</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
 
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    html, body {
-      height:100%;
-      background:#000;
-      overflow:hidden;
-      font-family:Arial,Helvetica,sans-serif;
-    }
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+  height:100%;
+  background:#000;
+  overflow:hidden;
+  font-family:Arial,Helvetica,sans-serif;
+}
 
-    #video-container {
-      position:relative;
-      width:100%;
-      height:100%;
-    }
+#video-container {
+  position:relative;
+  width:100%;
+  height:100%;
+}
 
-    #video {
-      width:100%;
-      height:100%;
-      object-fit:contain;
-      background:#000;
-    }
+#video {
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  background:#000;
+}
 
-    /* === CONTROLS === */
-    .ctrl {
-      position:absolute;
-      bottom:8px;
-      padding:6px 14px;
-      font-size:15px;
-      background:rgba(0,0,0,0.65);
-      color:white;
-      border:none;
-      border-radius:6px;
-      cursor:pointer;
-      z-index:15;
-      transition:opacity .6s, background .2s;
-    }
-    .ctrl:hover { background:rgba(40,40,40,0.9); }
+/* ===== SAFE CONTROL ZONE (ABOVE NAV BAR) ===== */
+.ctrl {
+  position:absolute;
+  bottom:90px;                /* 🔴 lifted above digital frame nav bar */
+  padding:8px 16px;
+  font-size:16px;
+  background:rgba(0,0,0,0.65);
+  color:white;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  z-index:20;
+  transition:opacity .5s, background .2s;
+}
+.ctrl:hover { background:rgba(40,40,40,0.9); }
 
-    /* Play = left of center */
-    #play-pause {
-      left:50%;
-      transform:translateX(-220px);
-      min-width:64px;
-    }
+/* Play: left of center */
+#play-pause {
+  left:50%;
+  transform:translateX(-240px);
+  min-width:70px;
+}
 
-    /* Mute = right of center */
-    #unmute-btn {
-      left:50%;
-      transform:translateX(160px);
-      min-width:48px;
-    }
+/* Mute: right of center */
+#unmute-btn {
+  left:50%;
+  transform:translateX(180px);
+  min-width:54px;
+}
 
-    /* Volume centered */
-    #volume {
-      position:absolute;
-      bottom:11px;
-      left:50%;
-      transform:translateX(-50%);
-      width:260px;
-      z-index:14;
-      -webkit-appearance:none;
-      appearance:none;
-      height:5px;
-      background:rgba(90,90,90,0.65);
-      border-radius:3px;
-      outline:none;
-      cursor:pointer;
-      transition:opacity .6s;
-    }
+/* Volume centered */
+#volume {
+  position:absolute;
+  bottom:94px;
+  left:50%;
+  transform:translateX(-50%);
+  width:260px;
+  z-index:19;
+  appearance:none;
+  height:6px;
+  background:rgba(100,100,100,0.7);
+  border-radius:4px;
+  cursor:pointer;
+}
 
-    #volume::-webkit-slider-thumb {
-      -webkit-appearance:none;
-      width:18px;
-      height:18px;
-      background:#0066cc;
-      border-radius:50%;
-      box-shadow:0 0 5px rgba(0,102,204,0.7);
-      cursor:pointer;
-    }
+#volume::-webkit-slider-thumb {
+  appearance:none;
+  width:20px;
+  height:20px;
+  background:#0a84ff;
+  border-radius:50%;
+  box-shadow:0 0 6px rgba(10,132,255,.8);
+}
 
-    /* Channel buttons */
-    #buttons {
-      position:fixed;
-      top:0; left:0; right:0;
-      background:rgba(17,17,17,0.85);
-      padding:10px;
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      justify-content:center;
-      z-index:20;
-      backdrop-filter:blur(4px);
-    }
+/* Channel bar (top, safe for frames) */
+#buttons {
+  position:fixed;
+  top:0; left:0; right:0;
+  background:rgba(15,15,15,0.85);
+  padding:10px;
+  display:flex;
+  gap:8px;
+  justify-content:center;
+  z-index:30;
+  backdrop-filter:blur(4px);
+}
 
-    #buttons button {
-      padding:8px 16px;
-      font-size:15px;
-      background:#2a2a2a;
-      color:white;
-      border:none;
-      border-radius:6px;
-    }
-    #buttons button.active { background:#0066cc; }
+#buttons button {
+  padding:8px 16px;
+  font-size:15px;
+  background:#2a2a2a;
+  color:white;
+  border:none;
+  border-radius:6px;
+}
+#buttons button.active { background:#0a84ff; }
 
-    #status {
-      position:absolute;
-      bottom:70px;
-      left:50%;
-      transform:translateX(-50%);
-      color:#aaa;
-      font-size:13px;
-      background:rgba(0,0,0,0.6);
-      padding:6px 12px;
-      border-radius:6px;
-      pointer-events:none;
-      z-index:10;
-      transition:opacity 1s;
-    }
-  </style>
+#status {
+  position:absolute;
+  bottom:150px;               /* also above nav bar */
+  left:50%;
+  transform:translateX(-50%);
+  color:#aaa;
+  font-size:13px;
+  background:rgba(0,0,0,0.6);
+  padding:6px 12px;
+  border-radius:6px;
+  pointer-events:none;
+  z-index:15;
+  transition:opacity 1s;
+}
+</style>
 </head>
-<body>
 
+<body>
 <div id="video-container">
   <video id="video" autoplay muted playsinline></video>
 
@@ -135,7 +130,7 @@
   <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
   <button id="unmute-btn" class="ctrl">🔇</button>
 
-  <div id="status">Loading channel...</div>
+  <div id="status">Loading…</div>
 </div>
 
 <div id="buttons"></div>
@@ -143,120 +138,76 @@
 <script>
 const video = document.getElementById('video');
 const status = document.getElementById('status');
-const playPauseBtn = document.getElementById('play-pause');
-const unmuteBtn = document.getElementById('unmute-btn');
-const volumeSlider = document.getElementById('volume');
-const controls = [playPauseBtn, unmuteBtn, volumeSlider];
+const playBtn = document.getElementById('play-pause');
+const muteBtn = document.getElementById('unmute-btn');
+const volume = document.getElementById('volume');
+let hls, currentUrl, lastProgress = Date.now();
 
-let currentHls = null;
-let currentUrl = null;
-let lastProgress = Date.now();
-
-/* Channels */
 const channels = [
   { name:"RoyaTV", url:"https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
   { name:"Jordan", url:"https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
   { name:"Mamlaka", url:"https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
-  { name:"Amman", url:"https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
-  { name:"Jazeera", url:"https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
-  { name:"Arabiya", url:"https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
-  { name:"JorSongs", url:"https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" }
+  { name:"Amman", url:"https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" }
 ];
 
-/* Channel buttons */
-const buttonsDiv = document.getElementById('buttons');
-channels.forEach((ch, i) => {
-  const btn = document.createElement('button');
-  btn.textContent = ch.name;
-  btn.onclick = () => playChannel(ch.url, btn);
-  buttonsDiv.appendChild(btn);
-  if (i === 0) playChannel(ch.url, btn);
+const bar = document.getElementById('buttons');
+channels.forEach((c,i)=>{
+  const b=document.createElement('button');
+  b.textContent=c.name;
+  b.onclick=()=>play(c.url,b);
+  bar.appendChild(b);
+  if(i===0) play(c.url,b);
 });
 
-/* UI logic */
-playPauseBtn.onclick = () => {
-  if (video.paused) {
-    video.play().catch(()=>{});
-    playPauseBtn.textContent = 'Pause';
+playBtn.onclick=()=>{
+  if(video.paused){ video.play(); playBtn.textContent='Pause'; }
+  else{ video.pause(); playBtn.textContent='Play'; }
+};
+
+muteBtn.onclick=()=>{
+  video.muted=!video.muted;
+  muteBtn.textContent=video.muted?'🔇':'🔊';
+};
+
+volume.oninput=()=>{
+  video.volume=volume.value;
+  if(video.volume>0){ video.muted=false; muteBtn.textContent='🔊'; }
+};
+
+function play(url,btn){
+  document.querySelectorAll('#buttons button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  currentUrl=url;
+  status.style.opacity=1;
+  status.textContent="Loading…";
+  if(hls) hls.destroy();
+  video.muted=true; muteBtn.textContent='🔇';
+
+  if(Hls.isSupported()){
+    hls=new Hls({ maxBufferLength:20, backBufferLength:0 });
+    hls.loadSource(url);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play());
+    hls.on(Hls.Events.FRAG_BUFFERED,()=>status.style.opacity=0);
+    hls.on(Hls.Events.ERROR,()=>restart());
   } else {
-    video.pause();
-    playPauseBtn.textContent = 'Play';
-  }
-};
-
-unmuteBtn.onclick = () => {
-  video.muted = !video.muted;
-  unmuteBtn.textContent = video.muted ? '🔇' : '🔊';
-};
-
-volumeSlider.oninput = () => {
-  video.volume = volumeSlider.value;
-  if (video.volume > 0 && video.muted) {
-    video.muted = false;
-    unmuteBtn.textContent = '🔊';
-  }
-};
-
-/* Stream handling */
-function playChannel(url, btn) {
-  document.querySelectorAll('#buttons button').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-
-  currentUrl = url;
-  status.textContent = "Loading...";
-  status.style.opacity = "1";
-
-  if (currentHls) currentHls.destroy();
-
-  video.muted = true;
-  unmuteBtn.textContent = '🔇';
-
-  const config = {
-    lowLatencyMode:false,
-    maxBufferLength:20,
-    backBufferLength:0,
-    liveSyncDuration:10
-  };
-
-  if (Hls.isSupported()) {
-    currentHls = new Hls(config);
-    currentHls.loadSource(url);
-    currentHls.attachMedia(video);
-
-    currentHls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(()=>{}));
-    currentHls.on(Hls.Events.FRAG_BUFFERED, () => status.style.opacity = "0");
-    currentHls.on(Hls.Events.ERROR, () => restartStream());
-  } else {
-    video.src = url;
-    video.play().catch(()=>{});
+    video.src=url;
+    video.play();
   }
 }
 
-/* Watchdog – ONLY reconnect if frozen */
-video.addEventListener('timeupdate', () => lastProgress = Date.now());
-setInterval(() => {
-  if (Date.now() - lastProgress > 20000) restartStream();
-}, 5000);
+video.addEventListener('timeupdate',()=>lastProgress=Date.now());
+setInterval(()=>{
+  if(Date.now()-lastProgress>20000) restart();
+},5000);
 
-function restartStream() {
-  status.textContent = "Reconnecting...";
-  status.style.opacity = "1";
-  if (currentHls) currentHls.destroy();
-  video.pause();
-  video.removeAttribute("src");
+function restart(){
+  status.textContent="Reconnecting…";
+  status.style.opacity=1;
+  if(hls) hls.destroy();
   video.load();
-  setTimeout(() => playChannel(currentUrl), 1500);
+  setTimeout(()=>play(currentUrl,document.querySelector('.active')),1500);
 }
-
-/* Auto-hide controls */
-let uiTimer;
-function showControls() {
-  controls.forEach(c => c.style.opacity = "1");
-  clearTimeout(uiTimer);
-  uiTimer = setTimeout(() => controls.forEach(c => c.style.opacity = "0"), 10000);
-}
-document.body.addEventListener('click', showControls);
-showControls();
 </script>
 </body>
 </html>
