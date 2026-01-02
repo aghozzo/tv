@@ -202,7 +202,7 @@ function playChannel(url, btn) {
 
   if (hls) hls.destroy();
 
-  video.muted = true;
+  video.muted = false;
   muteBtn.textContent = '🔇';
 
   if (Hls.isSupported()) {
