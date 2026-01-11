@@ -3,219 +3,339 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>TV Player</title>
+<title>TV Channels • Digital Frame</title>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
-<script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+<script type="text/javascript" src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;background:#000;font-family:Arial}
+* { margin:0; padding:0; box-sizing:border-box; }
 
-/* VIDEO */
-#video-container{position:relative;height:100%}
-video{width:100%;height:100%;object-fit:contain;background:#000}
+html, body {
+  height:100%;
+  width:100%;
+  background:#000;
+  overflow:hidden;
+  font-family:Arial,Helvetica,sans-serif;
+}
 
-/* CONTROLS */
-.ctrl{
+/* ================= VIDEO ================= */
+#video-container {
+  position:relative;
+  width:100%;
+  height:100%;
+}
+
+#video {
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  background:#000;
+}
+
+/* ================= CONTROLS ================= */
+.ctrl {
   position:absolute;
-  background:rgba(0,0,0,.6);
-  color:#fff;
-  border:none;
+  bottom:110px;
   padding:8px 14px;
-  border-radius:8px;
   font-size:16px;
+  background:rgba(0,0,0,0.6);
+  color:white;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  z-index:20;
+  transition:opacity .4s;
   opacity:0;
   pointer-events:none;
-  transition:.3s;
-  z-index:20
 }
-#play{left:12px;bottom:100px}
-#mute{right:12px;bottom:100px}
-#airplay{left:12px;bottom:55px}
-#cast{right:12px;bottom:55px}
-#volume{
+
+#play-pause { left:14px; }
+#unmute-btn { right:14px; }
+#airplay-btn { bottom:70px; left:14px; }
+#cast-btn { bottom:70px; right:14px; }
+
+#volume {
   position:absolute;
   bottom:10px;
   left:50%;
   transform:translateX(-50%);
   width:240px;
+  transition:opacity .4s;
   opacity:0;
   pointer-events:none;
-  transition:.3s;
 }
 
-/* CHANNEL BAR */
-#channels{
+/* ================= CHANNEL BAR ================= */
+#buttons {
   position:fixed;
-  top:0;left:0;right:0;
+  top:0; left:0; right:0;
+  background:rgba(15,15,15,0.85);
+  padding:4px;
   display:flex;
   flex-wrap:wrap;
   gap:4px;
-  padding:6px;
   justify-content:center;
-  background:rgba(15,15,15,.85);
   z-index:30;
-  transition:.4s
+  transition:transform .4s, opacity .4s;
 }
-#channels.hidden{transform:translateY(-100%);opacity:0}
-#channels button{
-  background:#2a2a2a;
-  color:#fff;
-  border:none;
-  padding:8px 16px;
-  border-radius:6px
-}
-#channels button.active{background:#0a84ff}
 
-/* STATUS */
-#status{
+#buttons.hidden {
+  transform:translateY(-100%);
+  opacity:0;
+  pointer-events:none;
+}
+
+#buttons button {
+  padding:8px 16px;
+  background:#2a2a2a;
+  color:white;
+  border:none;
+  border-radius:6px;
+}
+
+#buttons button.active { background:#0a84ff; }
+
+/* ================= STATUS ================= */
+#status {
   position:absolute;
-  bottom:160px;
+  bottom:170px;
   left:50%;
   transform:translateX(-50%);
-  background:rgba(0,0,0,.6);
   color:#aaa;
+  background:rgba(0,0,0,0.6);
   padding:6px 12px;
   border-radius:6px;
-  transition:.3s;
-  z-index:20
+  z-index:20;
+  transition:opacity .3s;
 }
 
-/* PiP */
-#pip{
+/* ================= FULLSCREEN PiP ================= */
+#pip {
   position:fixed;
-  inset:0;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
   background:#000;
+  z-index:100;
   display:none;
   flex-direction:column;
-  z-index:100
 }
-#pip-header{
+
+#pip-header {
   height:50px;
   background:#111;
-  color:#fff;
+  color:white;
   display:flex;
-  justify-content:space-between;
   align-items:center;
-  padding:0 14px
+  justify-content:space-between;
+  padding:0 14px;
+  font-size:16px;
+  flex-shrink:0;
 }
-#pip iframe{flex:1;border:none}
+
+#pip iframe {
+  width:100%;
+  height:100%;
+  border:none;
+  flex-grow:1;
+}
+
+#pip-close {
+  background:none;
+  border:none;
+  color:white;
+  font-size:24px;
+  cursor:pointer;
+}
 </style>
 </head>
 
 <body>
 
 <div id="video-container">
-  <video id="video" playsinline autoplay muted></video>
+  <!-- ✅ Mute added to allow autoplay -->
+  <video id="video" autoplay playsinline muted></video>
 
-  <button id="play" class="ctrl">Pause</button>
-  <button id="mute" class="ctrl">🔇</button>
-  <button id="airplay" class="ctrl">AirPlay</button>
-  <button id="cast" class="ctrl">Cast</button>
-  <input id="volume" type="range" min="0" max="1" step="0.01" value="0.5">
+  <button id="play-pause" class="ctrl">Pause</button>
+  <button id="unmute-btn" class="ctrl">🔇</button>
+  <button id="airplay-btn" class="ctrl">AirPlay</button>
+  <button id="cast-btn" class="ctrl">Cast</button>
+  <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
+
   <div id="status">Loading…</div>
 </div>
 
-<div id="channels"></div>
+<div id="buttons"></div>
 
+<!-- ========== FULLSCREEN PiP ========== -->
 <div id="pip">
   <div id="pip-header">
-    <span id="pip-title"></span>
-    <button onclick="closePiP()">✕</button>
+    <span id="pip-title">PiP</span>
+    <button id="pip-close">✕</button>
   </div>
-  <iframe></iframe>
+  <iframe src=""></iframe>
 </div>
 
 <script>
 const video = document.getElementById('video');
+const buttonsBar = document.getElementById('buttons');
+const pip = document.getElementById('pip');
+const pipFrame = pip.querySelector('iframe');
+const pipClose = document.getElementById('pip-close');
+const pipTitle = document.getElementById('pip-title');
 const status = document.getElementById('status');
-const channelBar = document.getElementById('channels');
-const controls = document.querySelectorAll('.ctrl,#volume');
-let hls = null, hideTimer;
 
-/* CHANNELS */
-const channels = [
-  {name:"RoyaTV",url:"https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8"},
-  {name:"Jordan",url:"https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8"},
-  {name:"Mamlaka",url:"https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8"},
-  {name:"Amman",url:"https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8"}
+const controls = [
+  document.getElementById('play-pause'),
+  document.getElementById('unmute-btn'),
+  document.getElementById('airplay-btn'),
+  document.getElementById('cast-btn'),
+  document.getElementById('volume')
 ];
 
-/* BUILD BUTTONS */
+let hls = null;
+let hideButtonsTimer = null;
+let hideControlsTimer = null;
+
+/* ================= CHANNELS ================= */
+const channels = [
+  { name:"RoyaTV",   url:"https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
+  { name:"Jordan",   url:"https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
+  { name:"Mamlaka",  url:"https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
+  { name:"Amman",    url:"https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
+  { name:"Jazeera",  url:"https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
+  { name:"Arabiya",  url:"https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
+  { name:"Hadath",   url:"https://av.alarabiya.net/alarabiapublish/alhadath.smil/alarabiapublish/alhadath_720p/chunks.m3u8" },
+  { name:"JorSongs", url:"https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" },
+  { name:"Future",   url:"https://live.kwikmotion.com/futurelive/ftv.smil/futurepublish/futuretv_240p/chunks.m3u8" }
+];
+
 channels.forEach((c,i)=>{
-  const b=document.createElement('button');
-  b.textContent=c.name;
-  b.onclick=()=>playChannel(c.url,b);
-  channelBar.appendChild(b);
-  if(i===0) setTimeout(()=>playChannel(c.url,b),100);
+  const b = document.createElement('button');
+  b.textContent = c.name;
+  b.onclick = () => playChannel(c.url,b);
+  buttonsBar.appendChild(b);
+  if(i===0) playChannel(c.url,b); // ✅ Auto-play first channel
 });
 
-/* PLAY STREAM (AUTOPLAY FIXED) */
-function playChannel(url,btn){
-  document.querySelectorAll('#channels button').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+/* ================= PiP BUTTONS ================= */
+const pipButtons = [
+  { name:"Lebanon", url:"https://famelack.com/lb/emIP3T2eF8irvD" },
+  { name:"Tarab",   url:"https://famelack.com/sa/bLrhTddKmX53C8" },
+  { name:"ABC",     url:"https://famelack.com/us/P8q5mRZ0E6h0hF" }
+];
 
-  status.style.opacity=1;
-  status.textContent="Loading…";
+pipButtons.forEach(b=>{
+  const btn = document.createElement('button');
+  btn.textContent = b.name;
+  btn.onclick = () => openPiP(b.name,b.url);
+  buttonsBar.appendChild(btn);
+});
+
+/* ================= PiP LOGIC ================= */
+function openPiP(name,url) {
+  video.pause();
+  pipFrame.src = url;
+  pipTitle.textContent = name;
+  pip.style.display = "flex";
+}
+
+pipClose.onclick = () => {
+  pip.style.display = "none";
+  pipFrame.src = "";
+  video.play().catch(()=>{});
+};
+
+/* ================= STREAM ================= */
+function playChannel(url,btn){
+  document.querySelectorAll('#buttons button').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+
+  status.style.opacity = 1;
+  status.textContent = "Loading…";
 
   if(hls) hls.destroy();
-  hls=new Hls();
+  hls = new Hls();
   hls.loadSource(url);
   hls.attachMedia(video);
 
-  hls.on(Hls.Events.MANIFEST_PARSED,()=>{
-    video.muted = true;        // REQUIRED FOR AUTOPLAY
+  hls.on(Hls.Events.MANIFEST_PARSED, ()=> {
+    video.muted = true;       // ✅ Required for autoplay
     video.play().catch(()=>{});
   });
 
-  video.onplaying=()=>status.style.opacity=0;
-}
+  video.onplaying = () => status.style.opacity = 0;
+};
 
-/* CONTROLS AUTO SHOW */
-function showUI(){
-  channelBar.classList.remove('hidden');
-  controls.forEach(c=>{c.style.opacity=1;c.style.pointerEvents="auto"});
-  clearTimeout(hideTimer);
-  hideTimer=setTimeout(()=>{
-    channelBar.classList.add('hidden');
-    controls.forEach(c=>{c.style.opacity=0;c.style.pointerEvents="none"});
+/* ================= AUTO HIDE BUTTONS & CONTROLS ================= */
+function showButtonsAndControls(){
+  buttonsBar.classList.remove('hidden');
+  controls.forEach(c=>{
+    c.style.opacity = 1;
+    c.style.pointerEvents = "auto";
+  });
+  clearTimeout(hideButtonsTimer);
+  clearTimeout(hideControlsTimer);
+  hideButtonsTimer = setTimeout(()=>buttonsBar.classList.add('hidden'),3000);
+  hideControlsTimer = setTimeout(()=>{
+    controls.forEach(c=>{
+      c.style.opacity = 0;
+      c.style.pointerEvents = "none";
+    });
   },3000);
 }
-document.addEventListener('click',showUI,{passive:true});
+document.addEventListener('click', showButtonsAndControls, {passive:true});
+document.addEventListener('touchstart', showButtonsAndControls, {passive:true});
 
-/* PLAY / MUTE */
-document.getElementById('play').onclick=()=>{
-  video.paused?video.play():video.pause();
-};
-document.getElementById('mute').onclick=()=>{
-  video.muted=!video.muted;
-};
-document.getElementById('volume').oninput=e=>{
-  video.volume=e.target.value;
-  video.muted=false;
+/* ================= PLAY/PAUSE AND VOLUME ================= */
+document.getElementById('play-pause').onclick = function(){
+  if(video.paused) { video.play(); this.textContent="Pause"; }
+  else { video.pause(); this.textContent="Play"; }
 };
 
-/* AIRPLAY */
-document.getElementById('airplay').onclick=()=>{
-  video.webkitShowPlaybackTargetPicker?.();
+const volumeSlider=document.getElementById('volume');
+volumeSlider.oninput = ()=>video.volume=volumeSlider.value;
+document.getElementById('unmute-btn').onclick=()=>video.muted=!video.muted;
+
+/* ================= AIRPLAY ================= */
+document.getElementById('airplay-btn').onclick = () => {
+  if(video.webkitShowPlaybackTargetPicker){
+    video.webkitShowPlaybackTargetPicker();
+  } else {
+    alert("AirPlay not supported on this device/browser.");
+  }
 };
 
-/* CHROMECAST */
-window.__onGCastApiAvailable=loaded=>{
-  if(!loaded)return;
+/* ================= CHROMECAST ================= */
+let castSession = null;
+function initializeCastApi() {
+  if (!window.cast || !window.cast.framework) return;
   cast.framework.CastContext.getInstance().setOptions({
-    receiverApplicationId:chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-    autoJoinPolicy:chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+    receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+    autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
   });
+}
+window['__onGCastApiAvailable'] = function(loaded, errorInfo) {
+  if (loaded) initializeCastApi();
 };
-document.getElementById('cast').onclick=async()=>{
-  const ctx=cast.framework.CastContext.getInstance();
-  await ctx.requestSession();
-  const media=new chrome.cast.media.MediaInfo(video.currentSrc,"application/x-mpegurl");
-  ctx.getCurrentSession().loadMedia(new chrome.cast.media.LoadRequest(media));
+document.getElementById('cast-btn').onclick = async () => {
+  if (!cast.framework) { alert("Chromecast not available."); return; }
+  try {
+    const context = cast.framework.CastContext.getInstance();
+    const session = context.getCurrentSession();
+    if (!session) {
+      await context.requestSession();
+    }
+    const mediaInfo = new chrome.cast.media.MediaInfo(video.currentSrc, 'application/x-mpegurl');
+    const request = new chrome.cast.media.LoadRequest(mediaInfo);
+    context.getCurrentSession().loadMedia(request);
+  } catch(e) {
+    console.error(e);
+    alert("Failed to cast. Make sure a Chromecast device is available.");
+  }
 };
 </script>
-
 </body>
 </html>
