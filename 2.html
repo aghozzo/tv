@@ -12,6 +12,7 @@
 
 html, body {
   height:100%;
+  width:100%;
   background:#000;
   overflow:hidden;
   font-family:Arial,Helvetica,sans-serif;
@@ -97,44 +98,43 @@ html, body {
   border-radius:6px;
 }
 
-/* ================= PiP WINDOW ================= */
+/* ================= FULLSCREEN PiP ================= */
 #pip {
   position:fixed;
-  right:0px;
-  bottom:0px;
-  width:600px;
-  height:800px;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
   background:#000;
-  border-radius:12px;
-  box-shadow:0 12px 30px rgba(0,0,0,.7);
   z-index:100;
   display:none;
-  overflow:hidden;
+  flex-direction:column;
 }
 
 #pip-header {
-  height:64px;
+  height:50px;
   background:#111;
   color:white;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:0 10px;
-  font-size:10px;
-  cursor:move;
+  padding:0 14px;
+  font-size:16px;
+  flex-shrink:0;
 }
 
 #pip iframe {
   width:100%;
-  height:calc(100% - 32px);
+  height:100%;
   border:none;
+  flex-grow:1;
 }
 
 #pip-close {
   background:none;
   border:none;
   color:white;
-  font-size:18px;
+  font-size:24px;
   cursor:pointer;
 }
 </style>
@@ -154,7 +154,7 @@ html, body {
 
 <div id="buttons"></div>
 
-<!-- ========== PIP WINDOW ========== -->
+<!-- ========== FULLSCREEN PIP ========== -->
 <div id="pip">
   <div id="pip-header">
     <span>1TV</span>
@@ -187,7 +187,7 @@ channels.forEach((c,i)=>{
   if(i===0) playChannel(c.url,b);
 });
 
-/* ================= 1TV PiP BUTTON ================= */
+/* ================= 1TV FULLSCREEN PiP BUTTON ================= */
 const oneTV = document.createElement('button');
 oneTV.textContent = "1TV";
 oneTV.onclick = openPiP;
@@ -197,7 +197,7 @@ buttonsBar.appendChild(oneTV);
 function openPiP() {
   video.pause();
   pipFrame.src = "https://famelack.com/lb/emIP3T2eF8irvD";
-  pip.style.display = "block";
+  pip.style.display = "flex";
 }
 
 pipClose.onclick = () => {
@@ -229,21 +229,15 @@ setTimeout(()=>buttonsBar.classList.add('hidden'),3000);
   document.addEventListener(e,showButtons,{passive:true});
 });
 
-/* ================= DRAG PiP ================= */
-let isDrag=true,ox=0,oy=0;
-const header=document.getElementById('pip-header');
-header.onmousedown=e=>{
-  isDrag=true;
-  ox=e.clientX-pip.offsetLeft;
-  oy=e.clientY-pip.offsetTop;
+/* ================= PLAY/PAUSE AND VOLUME ================= */
+document.getElementById('play-pause').onclick = ()=>{
+  if(video.paused) { video.play(); this.textContent="Pause"; }
+  else { video.pause(); this.textContent="Play"; }
 };
-document.onmousemove=e=>{
-  if(!isDrag) return;
-  pip.style.left=(e.clientX-ox)+'px';
-  pip.style.top=(e.clientY-oy)+'px';
-};
-document.onmouseup=()=>isDrag=false;
-</script>
+const volumeSlider=document.getElementById('volume');
+volumeSlider.oninput = ()=>video.volume=volumeSlider.value;
+document.getElementById('unmute-btn').onclick=()=>video.muted=!video.muted;
 
+</script>
 </body>
 </html>
