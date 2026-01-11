@@ -119,6 +119,7 @@ html, body {
   background:#111;
   color:white;
   display:flex;
+  flex-wrap:wrap;
   align-items:center;
   justify-content:space-between;
   padding:0 14px;
@@ -203,8 +204,10 @@ channels.forEach((c,i)=>{
 /* ================= PiP BUTTONS ================= */
 const pipButtons = [
   { name:"Lebanon", url:"https://famelack.com/lb/emIP3T2eF8irvD" },
+  { name:"MTV", url:"https://iptv-web.app/LB/MTV.lb/" },
   { name:"Tarab",   url:"https://famelack.com/sa/bLrhTddKmX53C8" },
-  { name:"ABC",     url:"https://famelack.com/us/P8q5mRZ0E6h0hF" }
+  { name:"ABC",     url:"https://famelack.com/us/P8q5mRZ0E6h0hF" },
+  
 ];
 
 pipButtons.forEach(b=>{
