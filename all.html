@@ -155,7 +155,7 @@ html, body {
 <body>
 
 <div id="video-container">
-  <!-- Muted removed to allow sound after first attach -->
+  <!-- Muted removed so first channel plays with sound -->
   <video id="video" autoplay playsinline></video>
 
   <button id="play-pause" class="ctrl">Pause</button>
@@ -217,7 +217,7 @@ channels.forEach((c,i)=>{
   b.textContent = c.name;
   b.onclick = () => playChannel(c.url,b);
   buttonsBar.appendChild(b);
-  if(i===0) firstChannelButton = b;
+  if(i===0) firstChannelButton = b; // Save first button
 });
 
 /* ================= PiP BUTTONS ================= */
@@ -271,7 +271,9 @@ function playChannel(url,btn){
 
 /* ================= AUTO-CLICK FIRST CHANNEL ================= */
 window.addEventListener('load', () => {
-  if(firstChannelButton) firstChannelButton.click(); // ✅ Auto-attach first channel
+  if(firstChannelButton) {
+    firstChannelButton.click(); // ✅ Auto-play with audio on first load
+  }
 });
 
 /* ================= AUTO HIDE BUTTONS & CONTROLS ================= */
