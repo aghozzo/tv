@@ -6,6 +6,7 @@
 <title>TV Channels • Digital Frame</title>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
+<script type="text/javascript" src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
 
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -48,6 +49,8 @@ html, body {
 
 #play-pause { left:14px; }
 #unmute-btn { right:14px; }
+#airplay-btn { bottom:70px; left:14px; }
+#cast-btn { bottom:70px; right:14px; }
 
 #volume {
   position:absolute;
@@ -64,7 +67,6 @@ html, body {
   background:rgba(15,15,15,0.85);
   padding:4px;
   display:flex;
-  flex-wrap:wrap;
   gap:4px;
   justify-content:center;
   z-index:30;
@@ -147,8 +149,10 @@ html, body {
   <video id="video" autoplay playsinline></video>
 
   <button id="play-pause" class="ctrl">Pause</button>
-  <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
   <button id="unmute-btn" class="ctrl">🔇</button>
+  <button id="airplay-btn" class="ctrl">AirPlay</button>
+  <button id="cast-btn" class="ctrl">Cast</button>
+  <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
 
   <div id="status">Loading…</div>
 </div>
@@ -198,7 +202,7 @@ channels.forEach((c,i)=>{
 
 /* ================= PiP BUTTONS ================= */
 const pipButtons = [
-  { name:"Lebanon", url:"https://famelack.com/lb/eJjlISOoTDWS4E" },
+  { name:"Lebanon", url:"https://famelack.com/lb/emIP3T2eF8irvD" },
   { name:"Tarab",   url:"https://famelack.com/sa/bLrhTddKmX53C8" },
   { name:"ABC",     url:"https://famelack.com/us/P8q5mRZ0E6h0hF" }
 ];
@@ -257,6 +261,47 @@ const volumeSlider=document.getElementById('volume');
 volumeSlider.oninput = ()=>video.volume=volumeSlider.value;
 document.getElementById('unmute-btn').onclick=()=>video.muted=!video.muted;
 
+/* ================= AIRPLAY ================= */
+document.getElementById('airplay-btn').onclick = () => {
+  if(video.webkitShowPlaybackTargetPicker){
+    video.webkitShowPlaybackTargetPicker();
+  } else {
+    alert("AirPlay not supported on this device/browser.");
+  }
+};
+
+/* ================= CHROMECAST ================= */
+let castSession = null;
+
+function initializeCastApi() {
+  if (!window.cast || !window.cast.framework) return;
+  cast.framework.CastContext.getInstance().setOptions({
+    receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+    autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+  });
+}
+
+window['__onGCastApiAvailable'] = function(loaded, errorInfo) {
+  if (loaded) initializeCastApi();
+};
+
+document.getElementById('cast-btn').onclick = async () => {
+  if (!cast.framework) { alert("Chromecast not available."); return; }
+
+  try {
+    const context = cast.framework.CastContext.getInstance();
+    const session = context.getCurrentSession();
+    if (!session) {
+      await context.requestSession();
+    }
+    const mediaInfo = new chrome.cast.media.MediaInfo(video.currentSrc, 'application/x-mpegurl');
+    const request = new chrome.cast.media.LoadRequest(mediaInfo);
+    context.getCurrentSession().loadMedia(request);
+  } catch(e) {
+    console.error(e);
+    alert("Failed to cast. Make sure a Chromecast device is available.");
+  }
+};
 </script>
 </body>
 </html>
