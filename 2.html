@@ -45,6 +45,9 @@ html, body {
   border-radius:8px;
   cursor:pointer;
   z-index:20;
+  transition:opacity .4s;
+  opacity:0;
+  pointer-events:none;
 }
 
 #play-pause { left:14px; }
@@ -58,6 +61,9 @@ html, body {
   left:50%;
   transform:translateX(-50%);
   width:240px;
+  transition:opacity .4s;
+  opacity:0;
+  pointer-events:none;
 }
 
 /* ================= CHANNEL BAR ================= */
@@ -67,6 +73,7 @@ html, body {
   background:rgba(15,15,15,0.85);
   padding:4px;
   display:flex;
+  flex-wrap:wrap;
   gap:4px;
   justify-content:center;
   z-index:30;
@@ -99,6 +106,7 @@ html, body {
   background:rgba(0,0,0,0.6);
   padding:6px 12px;
   border-radius:6px;
+  z-index:20;
 }
 
 /* ================= FULLSCREEN PiP ================= */
@@ -119,7 +127,6 @@ html, body {
   background:#111;
   color:white;
   display:flex;
-  flex-wrap:wrap;
   align-items:center;
   justify-content:space-between;
   padding:0 14px;
@@ -177,8 +184,17 @@ const pipFrame = pip.querySelector('iframe');
 const pipClose = document.getElementById('pip-close');
 const pipTitle = document.getElementById('pip-title');
 
+const controls = [
+  document.getElementById('play-pause'),
+  document.getElementById('unmute-btn'),
+  document.getElementById('airplay-btn'),
+  document.getElementById('cast-btn'),
+  document.getElementById('volume')
+];
+
 let hls = null;
-let hideTimer = null;
+let hideButtonsTimer = null;
+let hideControlsTimer = null;
 
 /* ================= CHANNELS ================= */
 const channels = [
@@ -204,10 +220,8 @@ channels.forEach((c,i)=>{
 /* ================= PiP BUTTONS ================= */
 const pipButtons = [
   { name:"Lebanon", url:"https://famelack.com/lb/emIP3T2eF8irvD" },
-  { name:"MTV", url:"https://iptv-web.app/LB/MTV.lb/" },
   { name:"Tarab",   url:"https://famelack.com/sa/bLrhTddKmX53C8" },
-  { name:"ABC",     url:"https://famelack.com/us/P8q5mRZ0E6h0hF" },
-  
+  { name:"ABC",     url:"https://famelack.com/us/P8q5mRZ0E6h0hF" }
 ];
 
 pipButtons.forEach(b=>{
@@ -243,16 +257,26 @@ function playChannel(url,btn){
   hls.on(Hls.Events.MANIFEST_PARSED, ()=>video.play());
 }
 
-/* ================= AUTO HIDE BAR ================= */
-function showButtons(){
+/* ================= AUTO HIDE BUTTONS & CONTROLS ================= */
+function showButtonsAndControls(){
   buttonsBar.classList.remove('hidden');
-  clearTimeout(hideTimer);
-  hideTimer = setTimeout(()=>buttonsBar.classList.add('hidden'),3000);
+  controls.forEach(c=>{
+    c.style.opacity = 1;
+    c.style.pointerEvents = "auto";
+  });
+  clearTimeout(hideButtonsTimer);
+  clearTimeout(hideControlsTimer);
+  hideButtonsTimer = setTimeout(()=>buttonsBar.classList.add('hidden'),3000);
+  hideControlsTimer = setTimeout(()=>{
+    controls.forEach(c=>{
+      c.style.opacity = 0;
+      c.style.pointerEvents = "none";
+    });
+  },3000);
 }
-setTimeout(()=>buttonsBar.classList.add('hidden'),3000);
-['click','touchstart','mousemove'].forEach(e=>{
-  document.addEventListener(e,showButtons,{passive:true});
-});
+
+document.addEventListener('click', showButtonsAndControls, {passive:true});
+document.addEventListener('touchstart', showButtonsAndControls, {passive:true});
 
 /* ================= PLAY/PAUSE AND VOLUME ================= */
 document.getElementById('play-pause').onclick = function(){
