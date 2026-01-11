@@ -1,322 +1,264 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TV • Digital Frame</title>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TV Channels • Digital Frame</title>
 
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
 
-    html, body {
-      height: 100%;
-      background: #000;
-      overflow: hidden;
-      font-family: Arial, Helvetica, sans-serif;
-    }
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
 
-    #video-container {
-      position: relative;
-      width: 100%;
-      height: 100%;
-    }
+html, body {
+  height:100%;
+  background:#000;
+  overflow:hidden;
+  font-family:Arial,Helvetica,sans-serif;
+}
 
-    #video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      background: #000;
-    }
+#video-container {
+  position:relative;
+  width:100%;
+  height:100%;
+}
 
-    /* Controls */
-    #play-pause,
-    #unmute-btn,
-    #volume {
-      position: absolute;
-      bottom: 6px;
-      background: rgba(0,0,0,0.65);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.25s, opacity 0.6s;
-      opacity: 1;
-      will-change: opacity;
-      z-index: 5;
-    }
+#video {
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  background:#000;
+}
 
-    #play-pause {
-      left: 10px;
-      padding: 6px 14px;
-      font-size: 15px;
-      min-width: 60px;
-    }
+/* ===== CONTROLS ===== */
+.ctrl {
+  position:absolute;
+  bottom:110px;
+  padding:8px 14px;
+  font-size:16px;
+  background:rgba(0,0,0,0.6);
+  color:white;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  z-index:20;
+  transition:background .2s;
+}
 
-    #unmute-btn {
-      right: 10px;
-      padding: 6px 12px;
-      font-size: 15px;
-      min-width: 48px;
-      text-align: center;
-    }
+.ctrl:hover { background:rgba(40,40,40,0.9); }
 
-    #unmute-btn.muted {
-      background: rgba(100,0,0,0.65);
-    }
+#play-pause { left:14px; min-width:70px; }
+#unmute-btn { right:14px; min-width:54px; }
 
-    #volume {
-      left: 50%;
-      transform: translateX(-50%);
-      width: 260px;
-      height: 5px;
-      appearance: none;
-      -webkit-appearance: none;
-      background: rgba(90,90,90,0.65);
-      border-radius: 3px;
-      outline: none;
-    }
+/* Volume */
+#volume {
+  position:absolute;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+  width:240px;
+  z-index:19;
+  appearance:none;
+  height:6px;
+  background:rgba(90,90,90,0.7);
+  border-radius:4px;
+}
 
-    #volume::-webkit-slider-thumb {
-      appearance: none;
-      -webkit-appearance: none;
-      width: 18px;
-      height: 18px;
-      background: #0066cc;
-      border-radius: 50%;
-      cursor: pointer;
-    }
+#volume::-webkit-slider-thumb {
+  appearance:none;
+  width:20px;
+  height:20px;
+  background:#0a84ff;
+  border-radius:50%;
+}
 
-    #status {
-      position: absolute;
-      bottom: 70px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #ccc;
-      font-size: 13px;
-      background: rgba(0,0,0,0.6);
-      padding: 6px 14px;
-      border-radius: 8px;
-      pointer-events: none;
-      z-index: 4;
-      transition: opacity 1.2s;
-    }
-  </style>
+/* ===== CHANNEL BAR ===== */
+#buttons {
+  position:fixed;
+  top:0; left:0; right:0;
+  background:rgba(15,15,15,0.85);
+  padding:4px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  justify-content:center;
+  z-index:30;
+  backdrop-filter:blur(4px);
+
+  transition:transform .4s ease, opacity .4s ease;
+}
+
+#buttons.hidden {
+  transform:translateY(-100%);
+  opacity:0;
+  pointer-events:none;
+}
+
+#buttons button {
+  padding:8px 16px;
+  font-size:15px;
+  background:#2a2a2a;
+  color:white;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+#buttons button.active {
+  background:#0a84ff;
+}
+
+/* Status */
+#status {
+  position:absolute;
+  bottom:170px;
+  left:50%;
+  transform:translateX(-50%);
+  color:#aaa;
+  font-size:13px;
+  background:rgba(0,0,0,0.6);
+  padding:6px 12px;
+  border-radius:6px;
+  pointer-events:none;
+  transition:opacity 1s;
+}
+</style>
 </head>
 
 <body>
+
 <div id="video-container">
-  <video id="video" autoplay muted playsinline></video>
-  <button id="play-pause">Play</button>
+  <video id="video" autoplay playsinline></video>
+
+  <button id="play-pause" class="ctrl">Pause</button>
   <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
-  <button id="unmute-btn">🔇</button>
-  <div id="status">Loading channel...</div>
+  <button id="unmute-btn" class="ctrl">🔇</button>
+
+  <div id="status">Loading…</div>
 </div>
 
-<script>
-/* ───────────────────────────────────────────────
-   Constants & State
-─────────────────────────────────────────────── */
-const CHANNEL_URL = "https://royatv-live.daioncdn.net/royatv/royatv_360p.m3u8";
+<div id="buttons"></div>
 
+<script>
 const video = document.getElementById('video');
 const status = document.getElementById('status');
-const playPauseBtn = document.getElementById('play-pause');
-const unmuteBtn = document.getElementById('unmute-btn');
-const volumeSlider = document.getElementById('volume');
+const playBtn = document.getElementById('play-pause');
+const muteBtn = document.getElementById('unmute-btn');
+const volume = document.getElementById('volume');
+const buttonsBar = document.getElementById('buttons');
 
-let currentHls = null;
+let hls = null;
+let currentUrl = null;
 let lastProgress = Date.now();
-let restarting = false;
+let hideTimer = null;
 
-/* ───────────────────────────────────────────────
-   UI Controls
-─────────────────────────────────────────────── */
-playPauseBtn.onclick = () => {
+/* ===== CHANNEL LIST ===== */
+const channels = [
+  { name:"RoyaTV",   url:"https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
+  { name:"Jordan",  url:"https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
+  { name:"Mamlaka", url:"https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
+  { name:"Amman",   url:"https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
+  { name:"Jazeera", url:"https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
+  { name:"Arabiya", url:"https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
+  { name:"Hadath",  url:"https://av.alarabiya.net/alarabiapublish/alhadath.smil/alarabiapublish/alhadath_720p/chunks.m3u8" },
+  { name:"JorSongs",url:"https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" },
+  { name:"Future",  url:"https://live.kwikmotion.com/futurelive/ftv.smil/futurepublish/futuretv_240p/chunks.m3u8" }
+];
+
+/* ===== CREATE CHANNEL BUTTONS ===== */
+channels.forEach((c, i) => {
+  const b = document.createElement('button');
+  b.textContent = c.name;
+  b.onclick = () => playChannel(c.url, b);
+  buttonsBar.appendChild(b);
+  if (i === 0) playChannel(c.url, b);
+});
+
+/* ===== 1TV EXTERNAL BUTTON ===== */
+const oneTV = document.createElement('button');
+oneTV.textContent = "1TV";
+oneTV.onclick = () => {
+  window.open("https://famelack.com/lb/emIP3T2eF8irvD", "_blank");
+};
+buttonsBar.appendChild(oneTV);
+
+/* ===== CONTROLS ===== */
+playBtn.onclick = () => {
   if (video.paused) {
-    video.play().catch(() => {});
-    playPauseBtn.textContent = 'Pause';
+    video.play().catch(()=>{});
+    playBtn.textContent = "Pause";
   } else {
     video.pause();
-    playPauseBtn.textContent = 'Play';
+    playBtn.textContent = "Play";
   }
 };
 
-unmuteBtn.onclick = () => {
+muteBtn.onclick = () => {
   video.muted = !video.muted;
-  updateMuteUI();
+  muteBtn.textContent = video.muted ? "🔇" : "🔊";
 };
 
-volumeSlider.oninput = () => {
-  video.volume = parseFloat(volumeSlider.value);
-  if (video.volume > 0 && video.muted) {
+volume.oninput = () => {
+  video.volume = volume.value;
+  if (video.volume > 0) {
     video.muted = false;
+    muteBtn.textContent = "🔊";
   }
-  updateMuteUI();
 };
 
-function updateMuteUI() {
-  if (video.muted) {
-    unmuteBtn.textContent = '🔇';
-    unmuteBtn.classList.add('muted');
-  } else {
-    unmuteBtn.textContent = '🔊';
-    unmuteBtn.classList.remove('muted');
-  }
-}
+/* ===== STREAM LOGIC ===== */
+function playChannel(url, btn) {
+  document.querySelectorAll("#buttons button").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
 
-/* ───────────────────────────────────────────────
-   HLS Setup
-─────────────────────────────────────────────── */
-function createHls() {
-  return new Hls({
-    enableWorker: true,
-    lowLatencyMode: false,
-    backBufferLength: 2,              // decoder safety
-    maxBufferLength: 12,
-    maxMaxBufferLength: 20,
-    maxBufferSize: 15 * 1000 * 1000,
-    liveSyncDurationCount: 3,
-    liveMaxLatencyDurationCount: 5,
-    fragLoadingTimeOut: 6000,
-    fragLoadingMaxRetry: 3,
-    fragLoadingRetryDelay: 1000,
-    maxFragLookUpTolerance: 0.2
-  });
-}
+  currentUrl = url;
+  status.textContent = "Loading…";
+  status.style.opacity = 1;
 
-/* ───────────────────────────────────────────────
-   Stream Control
-─────────────────────────────────────────────── */
-function playChannel(url) {
-  status.textContent = "Loading...";
-  status.style.opacity = "1";
-
-  if (currentHls) {
-    currentHls.destroy();
-    currentHls = null;
-  }
-
-  video.pause();
-  video.muted = true;
-  updateMuteUI();
+  if (hls) hls.destroy();
 
   if (Hls.isSupported()) {
-    currentHls = createHls();
-    currentHls.loadSource(url);
-    currentHls.attachMedia(video);
-
-    currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(() => {});
-    });
-
-    currentHls.on(Hls.Events.FRAG_BUFFERED, () => {
-      status.style.opacity = "0";
-    });
-
-    currentHls.on(Hls.Events.ERROR, (_, data) => {
-      if (!data.fatal) return;
-
-      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-        currentHls.startLoad();
-      } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-        currentHls.recoverMediaError();
-      } else {
-        restartStream();
-      }
-    });
-  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    hls = new Hls({ maxBufferLength:20, backBufferLength:0 });
+    hls.loadSource(url);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(()=>{}));
+    hls.on(Hls.Events.FRAG_BUFFERED, () => status.style.opacity = 0);
+    hls.on(Hls.Events.ERROR, restartStream);
+  } else {
     video.src = url;
-    video.addEventListener('loadedmetadata', () => {
-      video.play().catch(() => {});
-    }, { once: true });
+    video.play().catch(()=>{});
   }
 }
 
-function restartStream() {
-  if (restarting) return;
-  restarting = true;
-
-  status.textContent = "Reconnecting...";
-  status.style.opacity = "1";
-
-  if (currentHls) {
-    currentHls.destroy();
-    currentHls = null;
-  }
-
-  video.pause();
-  video.removeAttribute("src");
-  video.load();
-
-  setTimeout(() => {
-    restarting = false;
-    playChannel(CHANNEL_URL);
-  }, 1500);
-}
-
-/* ───────────────────────────────────────────────
-   Freeze Watchdog
-─────────────────────────────────────────────── */
-video.addEventListener('timeupdate', () => {
-  lastProgress = Date.now();
-});
-
-video.addEventListener('stalled', restartStream);
-video.addEventListener('waiting', () => {
-  status.textContent = "Buffering…";
-  status.style.opacity = "1";
-});
-
+/* ===== WATCHDOG ===== */
+video.addEventListener("timeupdate", () => lastProgress = Date.now());
 setInterval(() => {
-  if (Date.now() - lastProgress > 20000) {
-    restartStream();
-  }
+  if (Date.now() - lastProgress > 20000) restartStream();
 }, 5000);
 
-/* ───────────────────────────────────────────────
-   Burn-in Protection (auto-hide controls)
-─────────────────────────────────────────────── */
-const controls = [playPauseBtn, unmuteBtn, volumeSlider];
-let hideTimer;
-
-function showControls() {
-  controls.forEach(el => el.style.opacity = "1");
-  clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => {
-    controls.forEach(el => el.style.opacity = "0");
-  }, 10000);
+function restartStream() {
+  status.textContent = "Reconnecting…";
+  status.style.opacity = 1;
+  if (hls) hls.destroy();
+  video.load();
+  setTimeout(() => playChannel(currentUrl, document.querySelector(".active")), 1500);
 }
 
-document.body.addEventListener('click', showControls);
-document.body.addEventListener('touchstart', showControls, { passive: true });
-showControls();
+/* ===== AUTO-HIDE TOP BAR ===== */
+function showButtons() {
+  buttonsBar.classList.remove("hidden");
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => {
+    buttonsBar.classList.add("hidden");
+  }, 3000);
+}
 
-/* ───────────────────────────────────────────────
-   Visibility Handling (HA iframe safe)
-─────────────────────────────────────────────── */
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    currentHls?.stopLoad();
-    video.pause();
-  } else {
-    currentHls?.startLoad();
-    video.play().catch(() => {});
-  }
-});
+setTimeout(() => buttonsBar.classList.add("hidden"), 3000);
 
-/* ───────────────────────────────────────────────
-   Periodic Hard Refresh (leak insurance)
-─────────────────────────────────────────────── */
-setTimeout(() => {
-  location.reload();
-}, 6 * 60 * 60 * 1000);
-
-/* ───────────────────────────────────────────────
-   Start
-─────────────────────────────────────────────── */
-playChannel(CHANNEL_URL);
-setTimeout(() => status.style.opacity = "0", 8000);
+["click","touchstart","mousemove"].forEach(e =>
+  document.addEventListener(e, showButtons, { passive:true })
+);
 </script>
+
 </body>
 </html>
