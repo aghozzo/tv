@@ -107,6 +107,7 @@ html, body {
   padding:6px 12px;
   border-radius:6px;
   z-index:20;
+  transition:opacity .4s;
 }
 
 /* ================= FULLSCREEN PiP ================= */
@@ -167,7 +168,7 @@ html, body {
 
 <div id="buttons"></div>
 
-<!-- ========== FULLSCREEN PIP ========== -->
+<!-- ========== FULLSCREEN PiP ========== -->
 <div id="pip">
   <div id="pip-header">
     <span id="pip-title">PiP</span>
@@ -183,6 +184,7 @@ const pip = document.getElementById('pip');
 const pipFrame = pip.querySelector('iframe');
 const pipClose = document.getElementById('pip-close');
 const pipTitle = document.getElementById('pip-title');
+const status = document.getElementById('status');
 
 const controls = [
   document.getElementById('play-pause'),
@@ -250,11 +252,20 @@ function playChannel(url,btn){
   document.querySelectorAll('#buttons button').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
 
+  status.style.opacity = 1; // show status when switching channels
+  status.textContent = "Loading…";
+
   if(hls) hls.destroy();
   hls = new Hls();
   hls.loadSource(url);
   hls.attachMedia(video);
+
   hls.on(Hls.Events.MANIFEST_PARSED, ()=>video.play());
+
+  // hide status when video is ready
+  video.onplaying = () => {
+    status.style.opacity = 0;
+  };
 }
 
 /* ================= AUTO HIDE BUTTONS & CONTROLS ================= */
