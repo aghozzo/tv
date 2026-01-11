@@ -17,6 +17,7 @@ html, body {
   font-family:Arial,Helvetica,sans-serif;
 }
 
+/* ================= VIDEO ================= */
 #video-container {
   position:relative;
   width:100%;
@@ -30,7 +31,7 @@ html, body {
   background:#000;
 }
 
-/* ===== CONTROLS ===== */
+/* ================= CONTROLS ================= */
 .ctrl {
   position:absolute;
   bottom:110px;
@@ -42,50 +43,30 @@ html, body {
   border-radius:8px;
   cursor:pointer;
   z-index:20;
-  transition:background .2s;
 }
 
-.ctrl:hover { background:rgba(40,40,40,0.9); }
+#play-pause { left:14px; }
+#unmute-btn { right:14px; }
 
-#play-pause { left:14px; min-width:70px; }
-#unmute-btn { right:14px; min-width:54px; }
-
-/* Volume */
 #volume {
   position:absolute;
   bottom:10px;
   left:50%;
   transform:translateX(-50%);
   width:240px;
-  z-index:19;
-  appearance:none;
-  height:6px;
-  background:rgba(90,90,90,0.7);
-  border-radius:4px;
 }
 
-#volume::-webkit-slider-thumb {
-  appearance:none;
-  width:20px;
-  height:20px;
-  background:#0a84ff;
-  border-radius:50%;
-}
-
-/* ===== CHANNEL BAR ===== */
+/* ================= CHANNEL BAR ================= */
 #buttons {
   position:fixed;
   top:0; left:0; right:0;
   background:rgba(15,15,15,0.85);
   padding:4px;
   display:flex;
-  flex-wrap:wrap;
   gap:4px;
   justify-content:center;
   z-index:30;
-  backdrop-filter:blur(4px);
-
-  transition:transform .4s ease, opacity .4s ease;
+  transition:transform .4s, opacity .4s;
 }
 
 #buttons.hidden {
@@ -96,31 +77,65 @@ html, body {
 
 #buttons button {
   padding:8px 16px;
-  font-size:15px;
   background:#2a2a2a;
   color:white;
   border:none;
   border-radius:6px;
-  cursor:pointer;
 }
 
-#buttons button.active {
-  background:#0a84ff;
-}
+#buttons button.active { background:#0a84ff; }
 
-/* Status */
+/* ================= STATUS ================= */
 #status {
   position:absolute;
   bottom:170px;
   left:50%;
   transform:translateX(-50%);
   color:#aaa;
-  font-size:13px;
   background:rgba(0,0,0,0.6);
   padding:6px 12px;
   border-radius:6px;
-  pointer-events:none;
-  transition:opacity 1s;
+}
+
+/* ================= PiP WINDOW ================= */
+#pip {
+  position:fixed;
+  right:20px;
+  bottom:20px;
+  width:420px;
+  height:260px;
+  background:#000;
+  border-radius:12px;
+  box-shadow:0 12px 30px rgba(0,0,0,.7);
+  z-index:100;
+  display:none;
+  overflow:hidden;
+}
+
+#pip-header {
+  height:32px;
+  background:#111;
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 10px;
+  font-size:14px;
+  cursor:move;
+}
+
+#pip iframe {
+  width:100%;
+  height:calc(100% - 32px);
+  border:none;
+}
+
+#pip-close {
+  background:none;
+  border:none;
+  color:white;
+  font-size:18px;
+  cursor:pointer;
 }
 </style>
 </head>
@@ -139,125 +154,95 @@ html, body {
 
 <div id="buttons"></div>
 
+<!-- ========== PIP WINDOW ========== -->
+<div id="pip">
+  <div id="pip-header">
+    <span>1TV</span>
+    <button id="pip-close">✕</button>
+  </div>
+  <iframe src=""></iframe>
+</div>
+
 <script>
 const video = document.getElementById('video');
-const status = document.getElementById('status');
-const playBtn = document.getElementById('play-pause');
-const muteBtn = document.getElementById('unmute-btn');
-const volume = document.getElementById('volume');
 const buttonsBar = document.getElementById('buttons');
+const pip = document.getElementById('pip');
+const pipFrame = pip.querySelector('iframe');
+const pipClose = document.getElementById('pip-close');
 
 let hls = null;
-let currentUrl = null;
-let lastProgress = Date.now();
 let hideTimer = null;
 
-/* ===== CHANNEL LIST ===== */
+/* ================= CHANNELS ================= */
 const channels = [
-  { name:"RoyaTV",   url:"https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
-  { name:"Jordan",  url:"https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
-  { name:"Mamlaka", url:"https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
-  { name:"Amman",   url:"https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
-  { name:"Jazeera", url:"https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
-  { name:"Arabiya", url:"https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
-  { name:"Hadath",  url:"https://av.alarabiya.net/alarabiapublish/alhadath.smil/alarabiapublish/alhadath_720p/chunks.m3u8" },
-  { name:"JorSongs",url:"https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" },
-  { name:"Future",  url:"https://live.kwikmotion.com/futurelive/ftv.smil/futurepublish/futuretv_240p/chunks.m3u8" }
+  { name:"RoyaTV", url:"https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
+  { name:"Jordan", url:"https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" }
 ];
 
-/* ===== CREATE CHANNEL BUTTONS ===== */
-channels.forEach((c, i) => {
+channels.forEach((c,i)=>{
   const b = document.createElement('button');
   b.textContent = c.name;
-  b.onclick = () => playChannel(c.url, b);
+  b.onclick = () => playChannel(c.url,b);
   buttonsBar.appendChild(b);
-  if (i === 0) playChannel(c.url, b);
+  if(i===0) playChannel(c.url,b);
 });
 
-/* ===== 1TV EXTERNAL BUTTON ===== */
+/* ================= 1TV PiP BUTTON ================= */
 const oneTV = document.createElement('button');
 oneTV.textContent = "1TV";
-oneTV.onclick = () => {
-  window.open("https://famelack.com/lb/emIP3T2eF8irvD", "_blank");
-};
+oneTV.onclick = openPiP;
 buttonsBar.appendChild(oneTV);
 
-/* ===== CONTROLS ===== */
-playBtn.onclick = () => {
-  if (video.paused) {
-    video.play().catch(()=>{});
-    playBtn.textContent = "Pause";
-  } else {
-    video.pause();
-    playBtn.textContent = "Play";
-  }
-};
-
-muteBtn.onclick = () => {
-  video.muted = !video.muted;
-  muteBtn.textContent = video.muted ? "🔇" : "🔊";
-};
-
-volume.oninput = () => {
-  video.volume = volume.value;
-  if (video.volume > 0) {
-    video.muted = false;
-    muteBtn.textContent = "🔊";
-  }
-};
-
-/* ===== STREAM LOGIC ===== */
-function playChannel(url, btn) {
-  document.querySelectorAll("#buttons button").forEach(b => b.classList.remove("active"));
-  if (btn) btn.classList.add("active");
-
-  currentUrl = url;
-  status.textContent = "Loading…";
-  status.style.opacity = 1;
-
-  if (hls) hls.destroy();
-
-  if (Hls.isSupported()) {
-    hls = new Hls({ maxBufferLength:20, backBufferLength:0 });
-    hls.loadSource(url);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(()=>{}));
-    hls.on(Hls.Events.FRAG_BUFFERED, () => status.style.opacity = 0);
-    hls.on(Hls.Events.ERROR, restartStream);
-  } else {
-    video.src = url;
-    video.play().catch(()=>{});
-  }
+/* ================= PiP LOGIC ================= */
+function openPiP() {
+  video.pause();
+  pipFrame.src = "https://famelack.com/lb/emIP3T2eF8irvD";
+  pip.style.display = "block";
 }
 
-/* ===== WATCHDOG ===== */
-video.addEventListener("timeupdate", () => lastProgress = Date.now());
-setInterval(() => {
-  if (Date.now() - lastProgress > 20000) restartStream();
-}, 5000);
+pipClose.onclick = () => {
+  pip.style.display = "none";
+  pipFrame.src = "";
+  video.play().catch(()=>{});
+};
 
-function restartStream() {
-  status.textContent = "Reconnecting…";
-  status.style.opacity = 1;
-  if (hls) hls.destroy();
-  video.load();
-  setTimeout(() => playChannel(currentUrl, document.querySelector(".active")), 1500);
+/* ================= STREAM ================= */
+function playChannel(url,btn){
+  document.querySelectorAll('#buttons button').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+
+  if(hls) hls.destroy();
+  hls = new Hls();
+  hls.loadSource(url);
+  hls.attachMedia(video);
+  hls.on(Hls.Events.MANIFEST_PARSED, ()=>video.play());
 }
 
-/* ===== AUTO-HIDE TOP BAR ===== */
-function showButtons() {
-  buttonsBar.classList.remove("hidden");
+/* ================= AUTO HIDE BAR ================= */
+function showButtons(){
+  buttonsBar.classList.remove('hidden');
   clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => {
-    buttonsBar.classList.add("hidden");
-  }, 3000);
+  hideTimer = setTimeout(()=>buttonsBar.classList.add('hidden'),3000);
 }
+setTimeout(()=>buttonsBar.classList.add('hidden'),3000);
+['click','touchstart','mousemove'].forEach(e=>{
+  document.addEventListener(e,showButtons,{passive:true});
+});
 
-setTimeout(() => buttonsBar.classList.add("hidden"), 3000);
-
-["click","touchstart","mousemove"].forEach(e =>
-  document.addEventListener(e, showButtons, { passive:true })
-);
+/* ================= DRAG PiP ================= */
+let isDrag=false,ox=0,oy=0;
+const header=document.getElementById('pip-header');
+header.onmousedown=e=>{
+  isDrag=true;
+  ox=e.clientX-pip.offsetLeft;
+  oy=e.clientY-pip.offsetTop;
+};
+document.onmousemove=e=>{
+  if(!isDrag) return;
+  pip.style.left=(e.clientX-ox)+'px';
+  pip.style.top=(e.clientY-oy)+'px';
+};
+document.onmouseup=()=>isDrag=false;
 </script>
 
 </body>
