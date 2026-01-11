@@ -100,10 +100,10 @@ html, body {
 /* ================= PiP WINDOW ================= */
 #pip {
   position:fixed;
-  right:20px;
-  bottom:20px;
-  width:420px;
-  height:260px;
+  right:0px;
+  bottom:0px;
+  width:600px;
+  height:800px;
   background:#000;
   border-radius:12px;
   box-shadow:0 12px 30px rgba(0,0,0,.7);
@@ -113,14 +113,14 @@ html, body {
 }
 
 #pip-header {
-  height:32px;
+  height:64px;
   background:#111;
   color:white;
   display:flex;
   align-items:center;
   justify-content:space-between;
   padding:0 10px;
-  font-size:14px;
+  font-size:10px;
   cursor:move;
 }
 
@@ -230,7 +230,7 @@ setTimeout(()=>buttonsBar.classList.add('hidden'),3000);
 });
 
 /* ================= DRAG PiP ================= */
-let isDrag=false,ox=0,oy=0;
+let isDrag=true,ox=0,oy=0;
 const header=document.getElementById('pip-header');
 header.onmousedown=e=>{
   isDrag=true;
