@@ -262,7 +262,7 @@ function playChannel(url,btn){
   hls.attachMedia(video);
 
   hls.on(Hls.Events.MANIFEST_PARSED, ()=> {
-    video.muted = true;       // ✅ Required for autoplay
+    video.muted = false;       // ✅ Required for autoplay
     video.play().catch(()=>{});
   });
 
