@@ -4,13 +4,10 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>TV Channels • Digital Frame</title>
-
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
 <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
-
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-
 html, body {
   height:100%;
   width:100%;
@@ -18,21 +15,18 @@ html, body {
   overflow:hidden;
   font-family:Arial,Helvetica,sans-serif;
 }
-
 /* ================= VIDEO ================= */
 #video-container {
   position:relative;
   width:100%;
   height:100%;
 }
-
 #video {
   width:100%;
   height:100%;
   object-fit:contain;
   background:#000;
 }
-
 /* ================= CONTROLS ================= */
 .ctrl {
   position:absolute;
@@ -49,12 +43,10 @@ html, body {
   opacity:0;
   pointer-events:none;
 }
-
 #play-pause { left:14px; }
 #unmute-btn { right:14px; }
 #airplay-btn { bottom:70px; left:14px; }
 #cast-btn { bottom:70px; right:14px; }
-
 #volume {
   position:absolute;
   bottom:10px;
@@ -65,7 +57,6 @@ html, body {
   opacity:0;
   pointer-events:none;
 }
-
 /* ================= CHANNEL BAR ================= */
 #buttons {
   position:fixed;
@@ -79,13 +70,11 @@ html, body {
   z-index:30;
   transition:transform .4s, opacity .4s;
 }
-
 #buttons.hidden {
   transform:translateY(-100%);
   opacity:0;
   pointer-events:none;
 }
-
 #buttons button {
   padding:8px 16px;
   background:#2a2a2a;
@@ -93,9 +82,7 @@ html, body {
   border:none;
   border-radius:6px;
 }
-
 #buttons button.active { background:#0a84ff; }
-
 /* ================= STATUS ================= */
 #status {
   position:absolute;
@@ -109,7 +96,6 @@ html, body {
   z-index:20;
   transition:opacity .3s;
 }
-
 /* ================= FULLSCREEN PiP ================= */
 #pip {
   position:fixed;
@@ -122,7 +108,6 @@ html, body {
   display:none;
   flex-direction:column;
 }
-
 #pip-header {
   height:50px;
   background:#111;
@@ -134,14 +119,12 @@ html, body {
   font-size:16px;
   flex-shrink:0;
 }
-
 #pip iframe {
   width:100%;
   height:100%;
   border:none;
   flex-grow:1;
 }
-
 #pip-close {
   background:none;
   border:none;
@@ -151,24 +134,17 @@ html, body {
 }
 </style>
 </head>
-
 <body>
-
 <div id="video-container">
-  <!-- Muted removed so first channel plays with sound -->
   <video id="video" autoplay playsinline></video>
-
   <button id="play-pause" class="ctrl">Play</button>
-  <button id="unmute-btn" class="ctrl">🔇</button>
+  <button id="unmute-btn" class="ctrl">🔊</button>
   <button id="airplay-btn" class="ctrl">AirPlay</button>
   <button id="cast-btn" class="ctrl">Cast</button>
   <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
-
   <div id="status">Loading…</div>
 </div>
-
 <div id="buttons"></div>
-
 <div id="pip">
   <div id="pip-header">
     <span id="pip-title">PiP</span>
@@ -176,7 +152,6 @@ html, body {
   </div>
   <iframe src=""></iframe>
 </div>
-
 <script>
 const video = document.getElementById('video');
 const buttonsBar = document.getElementById('buttons');
@@ -185,7 +160,6 @@ const pipFrame = pip.querySelector('iframe');
 const pipClose = document.getElementById('pip-close');
 const pipTitle = document.getElementById('pip-title');
 const status = document.getElementById('status');
-
 const controls = [
   document.getElementById('play-pause'),
   document.getElementById('unmute-btn'),
@@ -193,44 +167,46 @@ const controls = [
   document.getElementById('cast-btn'),
   document.getElementById('volume')
 ];
+const volumeSlider = document.getElementById('volume');
+const unmuteBtn = document.getElementById('unmute-btn');
+const videoContainer = document.getElementById('video-container');
 
 let hls = null;
 let hideButtonsTimer = null;
 let hideControlsTimer = null;
+let currentChannelIndex = 0;
 
 /* ================= CHANNELS ================= */
 const channels = [
-  { name:"RoyaTV",   url:"https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
-  { name:"Jordan",   url:"https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
-  { name:"Mamlaka",  url:"https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
-  { name:"Amman",    url:"https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
-  { name:"Jazeera",  url:"https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
-  { name:"Arabiya",  url:"https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
-  { name:"Hadath",   url:"https://av.alarabiya.net/alarabiapublish/alhadath.smil/alarabiapublish/alhadath_720p/chunks.m3u8" },
-  { name:"Syr1",   url:"https://live.syriaone.tv/live/syriaone.m3u8" },
-  { name:"Syr2",   url:"https://live.kwikmotion.com/syriatv02live/syriatv02.smil/syriatv02publish/syriatv02_720p/chunks.m3u8" },  
-  { name:"SyrTV",   url:" https://live.kwikmotion.com/syriatvlive/syriatv.smil/syriatvpublish/syriatv_720p/chunks_dvr.m3u8" },  
+  { name:"RoyaTV", url:"https://royatv-live.daioncdn.net/royatv/royatv_720p.m3u8" },
+  { name:"Jordan", url:"https://jrtv-live.ercdn.net/jordanhd/jordanhd_720p.m3u8" },
+  { name:"Mamlaka", url:"https://bcovlive-a.akamaihd.net/4109c7ba30fd4a44ad9afe917c67a8c8/eu-central-1/6415809151001/profile_2/chunklist_dvr.m3u8" },
+  { name:"Amman", url:"https://ammantv-live.ercdn.net/ammantvhd/ammantvhd.m3u8" },
+  { name:"Jazeera", url:"https://live-hls-apps-aja-fa.getaj.net/AJA/index.m3u8" },
+  { name:"Arabiya", url:"https://live.alarabiya.net/alarabiapublish/alarabiya.smil/alarabiapublish/alarabiya_720p/chunks.m3u8" },
+  { name:"Hadath", url:"https://av.alarabiya.net/alarabiapublish/alhadath.smil/alarabiapublish/alhadath_720p/chunks.m3u8" },
+  { name:"Syr1", url:"https://live.syriaone.tv/live/syriaone.m3u8" },
+  { name:"Syr2", url:"https://live.kwikmotion.com/syriatv02live/syriatv02.smil/syriatv02publish/syriatv02_720p/chunks.m3u8" },
+  { name:"SyrTV", url:" https://live.kwikmotion.com/syriatvlive/syriatv.smil/syriatvpublish/syriatv_720p/chunks_dvr.m3u8" },
   { name:"JorSongs", url:"https://playlist.fasttvcdn.com/pl/cc0blorawy1ibohhrupraa/Song/playlist.m3u8" }
-  // { name:"watar", url:"https://admn-live-cdn-lb.starzplayarabia.com/out/v1/admn_tv_enc/yas_1/yas_1_hls_nd/index_yas1_video_enc_720p25.m3u8" },
-  // { name:"NG",   url:"https://admn-live-cdn-lb.starzplayarabia.com/out/v1/admn_tv_enc/national_geo/national_geo_hls_nd/index_ngeo_video_enc_720p25.m3u8" }
 ];
 
 let firstChannelButton = null;
 channels.forEach((c,i)=>{
   const b = document.createElement('button');
   b.textContent = c.name;
-  b.onclick = () => playChannel(c.url,b);
+  b.dataset.index = i;
+  b.onclick = () => playChannel(c.url, b);
   buttonsBar.appendChild(b);
-  if(i===0) firstChannelButton = b; // Save first button
+  if(i===0) firstChannelButton = b;
 });
 
 /* ================= PiP BUTTONS ================= */
 const pipButtons = [
   { name:"Lebanon", url:"https://famelack.com/lb/emIP3T2eF8irvD" },
-  { name:"Tarab",   url:"https://famelack.com/sa/bLrhTddKmX53C8" },
-  { name:"ABC",     url:"https://famelack.com/us/P8q5mRZ0E6h0hF" }
+  { name:"Tarab", url:"https://famelack.com/sa/bLrhTddKmX53C8" },
+  { name:"ABC", url:"https://famelack.com/us/P8q5mRZ0E6h0hF" }
 ];
-
 pipButtons.forEach(b=>{
   const btn = document.createElement('button');
   btn.textContent = b.name;
@@ -245,7 +221,6 @@ function openPiP(name,url) {
   pipTitle.textContent = name;
   pip.style.display = "flex";
 }
-
 pipClose.onclick = () => {
   pip.style.display = "none";
   pipFrame.src = "";
@@ -255,30 +230,29 @@ pipClose.onclick = () => {
 /* ================= STREAM ================= */
 function playChannel(url,btn){
   document.querySelectorAll('#buttons button').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-
+  if(btn) {
+    btn.classList.add('active');
+    currentChannelIndex = parseInt(btn.dataset.index);
+  }
   status.style.opacity = 1;
   status.textContent = "Loading…";
-
   if(hls) hls.destroy();
   hls = new Hls();
   hls.loadSource(url);
   hls.attachMedia(video);
-
   hls.on(Hls.Events.MANIFEST_PARSED, ()=> {
     const p = video.play();
-    if(p) p.catch(()=>{}); // avoid blocked promise
+    if(p) p.catch(()=>{});
   });
-
   video.onplaying = () => status.style.opacity = 0;
 };
 
 /* ================= AUTO-CLICK FIRST CHANNEL ================= */
 window.addEventListener('load', () => {
   if(firstChannelButton) {
-    firstChannelButton.click(); // ✅ Auto-play with audio on first load
-  firstChannelButton.click(); // ✅ Auto-play with audio on first load
+    firstChannelButton.click();
   }
+  updateUnmuteBtn();
 });
 
 /* ================= AUTO HIDE BUTTONS & CONTROLS ================= */
@@ -305,10 +279,19 @@ document.getElementById('play-pause').onclick = function(){
   if(video.paused){ video.play(); this.textContent="Pause"; }
   else { video.pause(); this.textContent="Play"; }
 };
+volumeSlider.oninput = ()=> {
+  video.volume = volumeSlider.value;
+  video.muted = false;
+  updateUnmuteBtn();
+};
 
-const volumeSlider=document.getElementById('volume');
-volumeSlider.oninput = ()=>video.volume=volumeSlider.value;
-document.getElementById('unmute-btn').onclick=()=>video.muted=!video.muted;
+function updateUnmuteBtn() {
+  unmuteBtn.textContent = video.muted ? '🔇' : '🔊';
+}
+document.getElementById('unmute-btn').onclick=()=>{
+  video.muted = !video.muted;
+  updateUnmuteBtn();
+};
 
 /* ================= AIRPLAY ================= */
 document.getElementById('airplay-btn').onclick = () => {
@@ -348,33 +331,69 @@ document.getElementById('cast-btn').onclick = async () => {
 };
 
 /* ================= TOUCH SWIPE GESTURES ================= */
+let touchStartX = 0;
+let touchStartY = 0;
+let touchStartTarget = null;
+const swipeThreshold = 40;          // Minimum pixels to register a swipe
+const pixelsPerVolumeStep = 50;     // ~50px = one 5% step
+const volumeStepSize = 0.05;        // 5% per step
 
-/* ================= TOUCH GESTURES (ADDED ONLY) ================= */
-let gx=0, gy=0;
-
-document.addEventListener("touchstart", e=>{
-  if(e.touches.length!==1) return;
-  gx=e.touches[0].clientX;
-  gy=e.touches[0].clientY;
-},{passive:true});
-
-document.addEventListener("touchend", e=>{
-  if(e.changedTouches.length!==1) return;
-  const dx=e.changedTouches[0].clientX-gx;
-  const dy=e.changedTouches[0].clientY-gy;
-  if(Math.abs(dx)<40 && Math.abs(dy)<40) return;
-
-  if(Math.abs(dy)>Math.abs(dx)){
-    let v=video.volume;
-    video.volume = dy<0 ? Math.min(1,v+0.05) : Math.max(0,v-0.05);
-    volumeSlider.value=video.volume;
-  } else {
-    const btns=[...document.querySelectorAll("#buttons button")];
-    const i=btns.findIndex(b=>b.classList.contains("active"));
-    if(dx>0 && i<btns.length-1) btns[i+1].click();
-    if(dx<0 && i>0) btns[i-1].click();
+videoContainer.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTarget = e.touches[0].target;
   }
-},{passive:true});
+}, { passive: true });
+
+videoContainer.addEventListener('touchend', e => {
+  if (e.changedTouches.length !== 1) return;
+  
+  // Ignore swipe if it started on any control (including volume slider)
+  if (touchStartTarget && controls.some(ctrl => ctrl === touchStartTarget || ctrl.contains(touchStartTarget))) {
+    return;
+  }
+  
+  const touchEndX = e.changedTouches[0].clientX;
+  const touchEndY = e.changedTouches[0].clientY;
+  
+  const deltaX = touchEndX - touchStartX;
+  const deltaY = touchEndY - touchStartY;
+  
+  const absX = Math.abs(deltaX);
+  const absY = Math.abs(deltaY);
+  
+  // Vertical swipe → volume control (swipe up = increase, down = decrease)
+  if (absY > swipeThreshold && absY > absX) {
+    video.muted = false;
+    updateUnmuteBtn();
+    
+    const direction = deltaY < 0 ? 1 : -1; // up = positive
+    const steps = Math.floor(absY / pixelsPerVolumeStep);
+    
+    if (steps > 0) {
+      let volChange = direction * steps * volumeStepSize;
+      let newVol = video.volume + volChange;
+      newVol = Math.max(0, Math.min(1, newVol));
+      video.volume = newVol;
+      volumeSlider.value = newVol;
+      showButtonsAndControls();
+    }
+  }
+  // Horizontal swipe → channel navigation (right = next, left = previous)
+  else if (absX > swipeThreshold && absX > absY) {
+    if (currentChannelIndex >= 0 && currentChannelIndex < channels.length) {
+      let newIndex;
+      if (deltaX > 0) { // Swipe right → next
+        newIndex = (currentChannelIndex + 1) % channels.length;
+      } else { // Swipe left → previous
+        newIndex = (currentChannelIndex - 1 + channels.length) % channels.length;
+      }
+      buttonsBar.children[newIndex].click();
+      showButtonsAndControls();
+    }
+  }
+});
 </script>
 </body>
 </html>
