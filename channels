@@ -318,53 +318,7 @@ document.getElementById('cast-btn').onclick = async () => {
 };
 
 /* ================= TOUCH SWIPE GESTURES ================= */
-let touchStartX = 0;
-let touchStartY = 0;
-const swipeThreshold = 60;     // Minimum pixels to register a swipe
-const volumeStep = 0.1;        // Volume change per swipe (10%)
 
-videoContainer.addEventListener('touchstart', e => {
-  if (e.touches.length === 1) {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  }
-}, { passive: true });
-
-videoContainer.addEventListener('touchend', e => {
-  if (e.changedTouches.length !== 1) return;
-  
-  const touchEndX = e.changedTouches[0].clientX;
-  const touchEndY = e.changedTouches[0].clientY;
-  
-  const deltaX = touchEndX - touchStartX;
-  const deltaY = touchEndY - touchStartY;
-  
-  const absX = Math.abs(deltaX);
-  const absY = Math.abs(deltaY);
-  
-  // Vertical swipe (volume control) - slide up = increase, slide down = decrease
-  if (absY > swipeThreshold && absY > absX * 1.2) {
-    const volChange = deltaY < 0 ? volumeStep : -volumeStep; // deltaY < 0 means swipe up
-    let newVol = video.volume + volChange;
-    newVol = Math.max(0, Math.min(1, newVol));
-    video.volume = newVol;
-    volumeSlider.value = newVol;
-    showButtonsAndControls(); // Show volume bar temporarily
-  }
-  // Horizontal swipe (channel navigation) - slide right = next, slide left = previous
-  else if (absX > swipeThreshold && absX > absY * 1.2) {
-    if (currentChannelIndex >= 0 && currentChannelIndex < channels.length) {
-      let newIndex;
-      if (deltaX > 0) { // Swipe right → next channel
-        newIndex = (currentChannelIndex + 1) % channels.length;
-      } else { // Swipe left → previous channel
-        newIndex = (currentChannelIndex - 1 + channels.length) % channels.length;
-      }
-      buttonsBar.children[newIndex].click();
-      showButtonsAndControls(); // Show channel bar temporarily
-    }
-  }
-});
 </script>
 </body>
 </html>
