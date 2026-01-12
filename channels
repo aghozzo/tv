@@ -198,6 +198,56 @@ document.addEventListener('touchend',e=>{
 
 /* ================= START ================= */
 window.onload=()=>buttonsBar.children[0].click();
+
+/* ================= TOUCH GESTURES (SAFE – NON-BREAKING) ================= */
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.addEventListener("touchstart", (e) => {
+  if (!e.touches || e.touches.length !== 1) return;
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener("touchend", (e) => {
+  if (!e.changedTouches || e.changedTouches.length !== 1) return;
+
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+
+  /* Ignore tiny movements */
+  if (absX < 40 && absY < 40) return;
+
+  /* ===== VOLUME UP / DOWN ===== */
+  if (absY > absX) {
+    let v = video.volume;
+
+    if (dy < 0) v = Math.min(1, v + 0.05);   // swipe up
+    else        v = Math.max(0, v - 0.05);   // swipe down
+
+    video.volume = v;
+    volumeSlider.value = v;
+    return;
+  }
+
+  /* ===== CHANNEL LEFT / RIGHT ===== */
+  const btns = Array.from(document.querySelectorAll("#buttons button"));
+  const activeIndex = btns.findIndex(b => b.classList.contains("active"));
+  if (activeIndex === -1) return;
+
+  if (dx > 0 && activeIndex < btns.length - 1) {
+    btns[activeIndex + 1].click(); // swipe right
+  }
+
+  if (dx < 0 && activeIndex > 0) {
+    btns[activeIndex - 1].click(); // swipe left
+  }
+}, { passive: true });
+
+
 </script>
 </body>
 </html>
